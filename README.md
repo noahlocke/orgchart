@@ -1,53 +1,90 @@
-# Org Chart
+# Interactive Org Chart
 
-An interactive, self-contained HTML org chart. No internet or dependencies needed to view — just open `orgchart.html` in any browser.
+A lightweight, dependency-free org chart you can generate from a simple CSV.
+The output is a single self-contained HTML file — open it in any browser, no
+server or internet required.
 
-## Rebuilding after you edit the data
+![demo](examples/sample-org.html)
+> Open `examples/sample-org.html` in a browser to see a live demo built from fake data.
 
-Keep these four files in the same folder:
+## Features
 
-- `orgchart.csv` — your data (edit this)
-- `build.py` — the generator
-- `build.sh` — convenience wrapper
-- `orgchart.template.html` — the chart template (don't edit)
+- **Collapse / expand** any manager by clicking it; the chart re-fits to view.
+- **Vertical expansion** with individual contributors stacked *above* sub-managers,
+  so expanding a team never buries the ICs.
+- **Automatic width reflow** when sibling subtrees grow into each other.
+- **Zoom-to-fit** on every interaction, free scroll-zoom / drag-pan, and a
+  "Fit entire chart" button.
+- **Per-class report counts** on collapsed managers (e.g. ● 11 FTE  ● 9 Contractor),
+  which respect the active filter.
+- **Class filter** — show FTE only, Contractors only, or both.
+- **Manager nodes are visually brighter** than individual contributors.
+- Each card shows **name, job title, and class**.
 
-Then rebuild with either:
+## Repository layout
 
-```bash
-./build.sh
+```
+.
+├── build.py                 # generator (CSV -> HTML)
+├── build.sh                 # convenience wrapper
+├── src/
+│   └── template.html        # the chart template + code  (edit the chart here)
+├── examples/
+│   ├── sample-org.csv       # fake sample data
+│   └── sample-org.html      # prebuilt demo (committed)
+├── data/                    # YOUR private data  (gitignored)
+│   └── orgchart.csv         # <- put your real CSV here
+└── dist/                    # generated output   (gitignored)
+    └── orgchart.html        # <- your built chart
 ```
 
-or
+Source code and the sample live in `src/` and `examples/` and are safe to share.
+**`data/` and `dist/` are gitignored**, so your real org data and the chart
+generated from it never get committed.
+
+## Quick start
 
 ```bash
-python3 build.py
+# 1. See the demo
+open examples/sample-org.html        # macOS  (or just double-click it)
+
+# 2. Build from your own data
+cp your-people.csv data/orgchart.csv
+./build.sh                           # -> dist/orgchart.html
+open dist/orgchart.html
 ```
 
-This regenerates `orgchart.html`. Refresh your browser to see changes.
+Requires Python 3 (standard library only — no packages to install).
 
 ## CSV format
 
-A header row plus one row per person. Required columns: **Name**, **Class**, **Manager**.
-Optional column: **Job Title** (shown under each name). Header matching is
-case-insensitive and accepts common variants (e.g. "Title"/"Role" for Job Title,
-"Reports To" for Manager).
+A header row plus one row per person. Column names are matched
+case-insensitively and accept common aliases.
 
-| Name        | Class      | Manager     | Job Title              |
-|-------------|------------|-------------|------------------------|
-| Noah Locke  | FTE        |             | Senior Director, PM    |
-| Jane Doe    | FTE        | Noah Locke  | Product Manager        |
-| Acme Corp   | Contractor | Jane Doe    | Contract Engineer      |
+| Column      | Required | Aliases accepted                  | Purpose                                   |
+|-------------|----------|-----------------------------------|-------------------------------------------|
+| `Name`      | yes      | Employee, Full Name               | Person's name (must be unique)            |
+| `Class`     | yes      | Type, Worker Type                 | FTE / Contractor / Org — color + filter   |
+| `Manager`   | yes      | Reports To, Supervisor            | The manager's `Name` (blank = root)       |
+| `Job Title` | no       | Title, Role, Position             | Shown under the name on each card         |
 
-- **Class** drives card color and the FTE/Contractor filter (FTE, Contractor, Org).
-- Anyone whose **Manager** isn't listed as a Name becomes a top-level root.
+Anyone whose `Manager` is not found among the `Name`s becomes a top-level root;
+multiple roots render side by side.
 
-## Using a different file name
+## Build commands
 
 ```bash
-python3 build.py path/to/yourdata.csv            # custom input
-python3 build.py path/to/yourdata.csv out.html   # custom input and output
+python3 build.py                       # data/orgchart.csv  -> dist/orgchart.html
+python3 build.py --sample              # examples/sample-org.csv -> examples/sample-org.html
+python3 build.py path/to/people.csv    # custom input -> dist/people.html
+python3 build.py in.csv out.html       # explicit input and output
 ```
 
-## Tip: export from Excel
+## Customizing the chart
 
-In Excel, File → Save As → CSV UTF-8, save it as `orgchart.csv` in this folder, then run the build.
+All styling and behavior live in `src/template.html` (colors, card size, layout
+constants, interactions). After editing it, rerun `./build.sh` to regenerate.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
