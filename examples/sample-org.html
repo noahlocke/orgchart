@@ -57,6 +57,14 @@
   .seg button:first-child{border-left:0}
   .seg button:hover{background:#243049}
   .seg button.on{background:#2b66c7;color:#fff}
+  .rootpick{display:inline-flex;align-items:center;gap:6px}
+  #rootSel{background:var(--panel);color:var(--ink);border:1px solid #2c3852;border-radius:9px;
+    padding:8px 10px;font-size:12.5px;font-weight:600;cursor:pointer;max-width:240px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  #rootSel:hover{background:#243049}
+  .xbtn{display:none;align-items:center;justify-content:center;background:var(--panel);color:var(--ink);
+    border:1px solid #2c3852;border-radius:9px;width:34px;height:35px;font-size:17px;line-height:1;
+    cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .xbtn:hover{background:#3a2a2a;border-color:#8a4a4a}
   #ui{position:fixed;top:14px;left:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:5}
   .btn{background:var(--panel);color:var(--ink);border:1px solid #2c3852;border-radius:9px;
     padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
@@ -84,6 +92,11 @@
     <button data-f="FTE">FTE</button>
     <button data-f="Contractor">Contractors</button>
   </span>
+  <span class="seglbl">Root:</span>
+  <span class="rootpick">
+    <select id="rootSel"><option value="">Full organization (default)</option></select>
+    <button id="rootClear" class="xbtn" title="Reset to full organization">&times;</button>
+  </span>
 </div>
 <div id="legend">
   <span><i style="background:var(--root)"></i>Root</span>
@@ -106,24 +119,24 @@
 const RAW = [{"name": "Jordan Avery", "cls": "FTE", "mgr": "", "title": "VP, Product Engineering"}, {"name": "Sam Carter", "cls": "FTE", "mgr": "Jordan Avery", "title": "Chief of Staff"}, {"name": "Riley Quinn", "cls": "Contractor", "mgr": "Jordan Avery", "title": "Program Coordinator"}, {"name": "Morgan Diaz", "cls": "FTE", "mgr": "Jordan Avery", "title": "Director, Platform"}, {"name": "Taylor Brooks", "cls": "FTE", "mgr": "Jordan Avery", "title": "Director, Applications"}, {"name": "Casey Nguyen", "cls": "FTE", "mgr": "Jordan Avery", "title": "Director, Data"}, {"name": "Jamie Park", "cls": "FTE", "mgr": "Morgan Diaz", "title": "Staff Engineer"}, {"name": "Drew Patel", "cls": "Contractor", "mgr": "Morgan Diaz", "title": "DevOps Engineer"}, {"name": "Alex Kim", "cls": "FTE", "mgr": "Morgan Diaz", "title": "Engineering Manager, Infrastructure"}, {"name": "Pat Olsen", "cls": "FTE", "mgr": "Alex Kim", "title": "Backend Engineer"}, {"name": "Robin Shah", "cls": "FTE", "mgr": "Alex Kim", "title": "Backend Engineer"}, {"name": "Lee Fisher", "cls": "Contractor", "mgr": "Alex Kim", "title": "Site Reliability Engineer"}, {"name": "Dana Cruz", "cls": "FTE", "mgr": "Alex Kim", "title": "Backend Engineer"}, {"name": "Jesse Reed", "cls": "FTE", "mgr": "Taylor Brooks", "title": "Senior iOS Engineer"}, {"name": "Sky Turner", "cls": "FTE", "mgr": "Taylor Brooks", "title": "Android Engineer"}, {"name": "Noor Ali", "cls": "Contractor", "mgr": "Taylor Brooks", "title": "QA Engineer"}, {"name": "Chris Bell", "cls": "FTE", "mgr": "Taylor Brooks", "title": "Engineering Manager, Web"}, {"name": "Erin Lopez", "cls": "FTE", "mgr": "Chris Bell", "title": "Frontend Engineer"}, {"name": "Toni Mehta", "cls": "Contractor", "mgr": "Chris Bell", "title": "Frontend Engineer"}, {"name": "Val Romero", "cls": "FTE", "mgr": "Chris Bell", "title": "Frontend Engineer"}, {"name": "Quinn Ford", "cls": "FTE", "mgr": "Casey Nguyen", "title": "Data Scientist"}, {"name": "Ira Bose", "cls": "Contractor", "mgr": "Casey Nguyen", "title": "Data Engineer"}, {"name": "Reese Gray", "cls": "FTE", "mgr": "Casey Nguyen", "title": "Manager, Analytics"}, {"name": "Hayden Cole", "cls": "FTE", "mgr": "Reese Gray", "title": "Analytics Engineer"}, {"name": "Sasha Vance", "cls": "FTE", "mgr": "Reese Gray", "title": "BI Analyst"}, {"name": "Marlowe Tan", "cls": "Contractor", "mgr": "Reese Gray", "title": "Data Analyst"}];
 
 /* ---------- Build forest ---------- */
-const PRIMARY = "Noah Locke";
 const byName = new Map();
 RAW.forEach(r => byName.set(r.name, {name:r.name, cls:r.cls, mgr:r.mgr, title:r.title||"", children:[]}));
-const roots = [];
-byName.forEach(n => {
-  const p = n.mgr && byName.get(n.mgr);
-  if (p) p.children.push(n);
-  else { if(!byName.has(n.mgr)) roots.push({name:n.mgr, cls:"root", children:[n], synthetic:true}); }
-});
-// merge synthetic roots that share a manager name
 const rootMap = new Map();
 const realRoots = [];
-roots.forEach(r=>{
-  if(rootMap.has(r.name)){ rootMap.get(r.name).children.push(...r.children); }
-  else { rootMap.set(r.name, r); realRoots.push(r); }
+function ensureSynthRoot(name){            // for a manager named in the data but having no row
+  if(rootMap.has(name)) return rootMap.get(name);
+  const r={name:name, cls:"root", children:[], synthetic:true};
+  rootMap.set(name, r); realRoots.push(r); return r;
+}
+byName.forEach(n => {
+  if(n.mgr && byName.has(n.mgr))      byName.get(n.mgr).children.push(n);  // normal child
+  else if(n.mgr)                      ensureSynthRoot(n.mgr).children.push(n); // absent manager
+  else                                realRoots.push(n);                   // blank manager => real root
 });
 // order: primary first
-realRoots.sort((a,b)=> (a.name===PRIMARY?-1:b.name===PRIMARY?1:a.name.localeCompare(b.name)));
+function descCount(n){ let c=0; (function w(x){ x.children.forEach(k=>{ c++; w(k); }); })(n); return c; }
+realRoots.sort((a,b)=> descCount(b)-descCount(a) || a.name.localeCompare(b.name));
+const PRIMARY = realRoots.length ? realRoots[0].name : "";
 // sort children: ICs (no kids) first, managers after; alpha within group
 function sortKids(n){
   n.children.sort((a,b)=>{
@@ -135,8 +148,19 @@ function sortKids(n){
 }
 realRoots.forEach(sortKids);
 
+/* ---------- Re-root (view a single manager's subtree) ---------- */
+let rootOverride=null;
+function nodeByName(nm){ return byName.get(nm) || realRoots.find(r=>r.name===nm) || null; }
+function activeRoots(){ const n = rootOverride && nodeByName(rootOverride); return n ? [n] : realRoots; }
+function allManagers(){
+  const m=new Map();
+  realRoots.forEach(r=>{ if(r.children.length) m.set(r.name,r); });
+  byName.forEach(n=>{ if(n.children.length) m.set(n.name,n); });
+  return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name));   // alphabetical by first name
+}
+
 document.getElementById('sub').textContent =
-  "· " + byName.size + " people · root: " + PRIMARY;
+  "· " + byName.size + " people" + (PRIMARY ? " · root: " + PRIMARY : "");
 
 /* ---------- Expand state ---------- */
 const expanded = new Set();
@@ -153,7 +177,7 @@ function computeKeep(){
     n.children.forEach(c=>{ if(rec(c)) any=true; });
     if(any) KEEP.add(n.name);
     return any;
-  })({name:'__root__',synthetic:true,cls:'root',children:realRoots});
+  })({name:'__root__',synthetic:true,cls:'root',children:activeRoots()});
 }
 function kids(n){ return n.children.filter(c=>KEEP.has(c.name)); }   // filter-aware children
 function hasKids(n){ return kids(n).length>0; }                      // expandable under filter
@@ -230,7 +254,7 @@ function shift(n, dx, dy){
 let WORLD={x:0,y:0,w:0,h:0};
 function runLayout(){
   let cx=0, maxH=0;
-  realRoots.forEach((r,i)=>{ const b=layout(r,cx,0); cx+=b.w+ROOTGAP; maxH=Math.max(maxH,b.h); });
+  activeRoots().forEach((r,i)=>{ const b=layout(r,cx,0); cx+=b.w+ROOTGAP; maxH=Math.max(maxH,b.h); });
   WORLD={x:0,y:0,w:Math.max(0,cx-ROOTGAP),h:maxH};
 }
 
@@ -241,7 +265,7 @@ function visible(){
     out.push({n,depth});
     if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>walk(c,depth+1));
   }
-  realRoots.forEach(r=>walk(r,0));
+  activeRoots().forEach(r=>walk(r,0));
   return out;
 }
 
@@ -372,11 +396,11 @@ function collapseRec(n){ expanded.delete(n.name); n.children.forEach(collapseRec
 document.getElementById('fitAll').onclick=()=>fitBox(WORLD,80);
 document.getElementById('expandAll').onclick=()=>{
   byName.forEach(n=>{if(n.children.length)expanded.add(n.name);});
-  realRoots.forEach(r=>expanded.add(r.name));
+  activeRoots().forEach(r=>expanded.add(r.name));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 };
 document.getElementById('collapseAll').onclick=()=>{
-  expanded.clear(); realRoots.forEach(r=>expanded.add(r.name));
+  expanded.clear(); activeRoots().forEach(r=>expanded.add(r.name));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 };
 document.getElementById('filter').addEventListener('click',e=>{
@@ -385,6 +409,26 @@ document.getElementById('filter').addEventListener('click',e=>{
   e.currentTarget.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 });
+
+// Root selector: pick any manager to view only their subtree; clear to revert.
+const rootSel=document.getElementById('rootSel');
+const rootClear=document.getElementById('rootClear');
+allManagers().forEach(m=>{
+  const o=document.createElement('option');
+  o.value=m.name;
+  o.textContent=m.name+' ('+m.children.length+')';
+  rootSel.appendChild(o);
+});
+function applyRoot(name){
+  rootOverride = name || null;
+  rootSel.value = name || '';
+  rootClear.style.display = name ? 'inline-flex' : 'none';
+  if(name && nodeByName(name)) expanded.add(name);   // reveal the new root's reports
+  render();
+  requestAnimationFrame(()=>fitBox(WORLD,80));
+}
+rootSel.addEventListener('change',()=>applyRoot(rootSel.value));
+rootClear.addEventListener('click',()=>applyRoot(''));
 
 // wheel zoom around pointer
 svg.addEventListener('wheel',e=>{

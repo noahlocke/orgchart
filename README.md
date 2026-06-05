@@ -4,8 +4,8 @@ A lightweight, dependency-free org chart you can generate from a simple CSV.
 The output is a single self-contained HTML file — open it in any browser, no
 server or internet required.
 
-![demo](examples/sample-org.html)
-> Open `examples/sample-org.html` in a browser to see a live demo built from fake data.
+**[Open the live demo →](examples/sample-org.html)** — a chart built from fake data
+(`examples/sample-org.csv`). Download the file and open it in any browser.
 
 ## Features
 
@@ -17,6 +17,8 @@ server or internet required.
   "Fit entire chart" button.
 - **Per-class report counts** on collapsed managers (e.g. ● 11 FTE  ● 9 Contractor),
   which respect the active filter.
+- **Re-root view** — pick any manager from the **Root** dropdown (alphabetical
+  by first name) to view only their subtree; click **×** to revert to the full org.
 - **Class filter** — show FTE only, Contractors only, or both.
 - **Manager nodes are visually brighter** than individual contributors.
 - Each card shows **name, job title, and class**.
@@ -87,10 +89,27 @@ so you can keep many charts side by side in `dist/` without overwriting each oth
 `NAME` is just a label; the output always lands in `dist/<NAME>.html`
 (a `.html` you include is ignored, so `company` and `company.html` are equivalent).
 
+## Architecture
+
+Two pieces of code, nothing else:
+
+- **`build.py`** reads the CSV, emits a JSON array, and substitutes it for the
+  token `__DATA__` in the template — producing a single self-contained HTML file
+  (inline CSS + SVG + vanilla JS, no dependencies, no network).
+- **`src/template.html`** is the whole chart. Its data line is
+  `const RAW = __DATA__;`. The JS pipeline is:
+  *forest build → re-root (`activeRoots`) → filter (`computeKeep`/`kids`) →
+  pure layout (`layout`/`runLayout`) → keyed SVG render → camera (`fitBox`).*
+
+Edit the chart in `src/template.html`, then rerun `./build.sh` to regenerate.
+**Never edit files in `dist/`** — they are generated. For a deeper code map and
+contributor notes, see [`CLAUDE.md`](CLAUDE.md).
+
 ## Customizing the chart
 
 All styling and behavior live in `src/template.html` (colors, card size, layout
-constants, interactions). After editing it, rerun `./build.sh` to regenerate.
+constants `CW/CH/VGAP/HGAP/DROP/ROOTGAP`, interactions). After editing it, rerun
+`./build.sh` to regenerate, then hard-refresh your browser.
 
 ## License
 

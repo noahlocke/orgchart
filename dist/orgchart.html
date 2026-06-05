@@ -57,6 +57,14 @@
   .seg button:first-child{border-left:0}
   .seg button:hover{background:#243049}
   .seg button.on{background:#2b66c7;color:#fff}
+  .rootpick{display:inline-flex;align-items:center;gap:6px}
+  #rootSel{background:var(--panel);color:var(--ink);border:1px solid #2c3852;border-radius:9px;
+    padding:8px 10px;font-size:12.5px;font-weight:600;cursor:pointer;max-width:240px;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  #rootSel:hover{background:#243049}
+  .xbtn{display:none;align-items:center;justify-content:center;background:var(--panel);color:var(--ink);
+    border:1px solid #2c3852;border-radius:9px;width:34px;height:35px;font-size:17px;line-height:1;
+    cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .xbtn:hover{background:#3a2a2a;border-color:#8a4a4a}
   #ui{position:fixed;top:14px;left:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:5}
   .btn{background:var(--panel);color:var(--ink);border:1px solid #2c3852;border-radius:9px;
     padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
@@ -84,6 +92,11 @@
     <button data-f="FTE">FTE</button>
     <button data-f="Contractor">Contractors</button>
   </span>
+  <span class="seglbl">Root:</span>
+  <span class="rootpick">
+    <select id="rootSel"><option value="">Full organization (default)</option></select>
+    <button id="rootClear" class="xbtn" title="Reset to full organization">&times;</button>
+  </span>
 </div>
 <div id="legend">
   <span><i style="background:var(--root)"></i>Root</span>
@@ -106,24 +119,24 @@
 const RAW = [{"name": "AravindKumar Thalakokkula", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Yashwanth Dhulipudi", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Anirudh Ameraneni", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Saurabh Sharma", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Navin Niraj", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "VinayKrishna Medishetty", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Kowsil Polavarapu", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Thomas Morgan", "cls": "Contractor", "mgr": "Noah Locke", "title": "Title"}, {"name": "Aindrila Ghorai", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Cheni Deendayal", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Sushree Chhotaray", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Geoffrey Yates", "cls": "Contractor", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "SEKHAR VAANA", "cls": "Contractor", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "Veeraiah Jasti", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Raj Rajput", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Saikiran Salla", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Nehanth Yarlagadda", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Bharatnag Patapanchala", "cls": "Contractor", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Indranil Dasgupta", "cls": "Contractor", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Keshav Garg", "cls": "Contractor", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Richa Rathore", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Anusha Gudumasu", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Pijush Kar", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "VenkataRajaVamsiSankar Veguru", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Giribabu Geda", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "VeeraVenkataSivaprasad Ponnaganti", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Nishant Saxena", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Pruthvi Nannapaneni", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "SOUNDARRAJAN PONPANDI", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Hardik Kalathiya", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Satyanarayana Pusuluri", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Raju Manthri", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "JanaNagaBhulokaDeekshitha Maddala", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "SurendraVarma Pericherla", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Rajiv Yella", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "VenkataRamana Cheedara", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Suresh Babu Kunku", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Daisy Vibas", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Stephen Risso", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Dharma Thej Karri", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Satyendra Kumar", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Bill O'Rourke", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Pushkar Bapat", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Atul Mangrolia", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Benjamin Hammond", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Peter Coughlin", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "SivaMadhuBabu Chalasani", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Tyson Burke", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "SyedInamul Hassan", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "RajatRajan Kulkarni", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Melinda Checkon", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Veerendra Potla", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Balaji Palakurthy", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Myle Sielaff", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Suchitra Kondaka", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Kamala Buddhi", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Sudhakar Reddy Alla", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Keith Lutz", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Michael Adkins", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Arian Amador", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Lina Kebede", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Narendar Mudireddy", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Ibrahim Adigozalzade", "cls": "FTE", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Jeneane Hubbell", "cls": "FTE", "mgr": "Rafael Santander", "title": "Title"}, {"name": "Gina Fang", "cls": "FTE", "mgr": "Rafael Santander", "title": "Title"}, {"name": "Carolina Gerren", "cls": "FTE", "mgr": "Rafael Santander", "title": "Title"}, {"name": "Simon Nejadkashani", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Alison McLane", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Rafael Santander", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Lilly Dang", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Deviprasad Thirumalai Chandrasekar", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Hugh Fetner", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Azalea Michael", "cls": "FTE", "mgr": "Mandy Benny", "title": "Title"}, {"name": "Romeo Fresnedi", "cls": "FTE", "mgr": "Mandy Benny", "title": "Title"}, {"name": "Stephanie Campbell", "cls": "FTE", "mgr": "Mandy Benny", "title": "Title"}, {"name": "John Dossou", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Krishna Peddi", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Emmanuel Eleruja", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Edward Lyk", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Eric Jarke", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Abhishek Gubba", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Francisco Saligumba", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Vamshi Kulkarni", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Rajeshwar Jinnaram", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Rajavardhan Madireddy", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Harinath Mekala", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Hima Proddatori", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Spoorthi Reddy Bachi Reddy", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Chinmai Nagineni", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Ron Hardin", "cls": "FTE", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "James Stiner", "cls": "FTE", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "Marjorie Davis", "cls": "FTE", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "Mackenzie Roach", "cls": "FTE", "mgr": "James Stiner", "title": "Title"}, {"name": "Scott Van Atta", "cls": "FTE", "mgr": "James Stiner", "title": "Title"}, {"name": "Daniel Lucio", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "John Kelley", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Manjinder Singh", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Francis Smith", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Hemant Dinkar", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Manojkumar Ravichandran", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Julian Calagos", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Victor Gonzalez Sanchez", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Deepti Batra", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Kevin Lewis", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "George Cockburn", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Kimberly Smeltzer", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Benton Snyder", "cls": "FTE", "mgr": "Gina Fang", "title": "Title"}, {"name": "Erick-Jayce De Jesus", "cls": "FTE", "mgr": "Gina Fang", "title": "Title"}, {"name": "Akash Guha", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Amal Rajesh Kocherla", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Sushan Dhakal", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Saravanan Nagappan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Kelvin Chan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Sanat Sahasrabudhe", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Rahul Radhakrishnan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Venkatesh Nagarajan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Rustam Radzhabov", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Claudia Ruiz", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Prithvi Sreenivasan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Yury Brei", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Narendra Sharma Kattel", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Kevin Huang", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Louis Wilson", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Christopher Desgage", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Syed Raheemuddin", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Elton Jue", "cls": "FTE", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Rebecca Candido", "cls": "FTE", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Yo Nam", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}, {"name": "Neha Amin", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}, {"name": "Cortwright Grant", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}, {"name": "Mandy Benny", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}];
 
 /* ---------- Build forest ---------- */
-const PRIMARY = "Noah Locke";
 const byName = new Map();
 RAW.forEach(r => byName.set(r.name, {name:r.name, cls:r.cls, mgr:r.mgr, title:r.title||"", children:[]}));
-const roots = [];
-byName.forEach(n => {
-  const p = n.mgr && byName.get(n.mgr);
-  if (p) p.children.push(n);
-  else { if(!byName.has(n.mgr)) roots.push({name:n.mgr, cls:"root", children:[n], synthetic:true}); }
-});
-// merge synthetic roots that share a manager name
 const rootMap = new Map();
 const realRoots = [];
-roots.forEach(r=>{
-  if(rootMap.has(r.name)){ rootMap.get(r.name).children.push(...r.children); }
-  else { rootMap.set(r.name, r); realRoots.push(r); }
+function ensureSynthRoot(name){            // for a manager named in the data but having no row
+  if(rootMap.has(name)) return rootMap.get(name);
+  const r={name:name, cls:"root", children:[], synthetic:true};
+  rootMap.set(name, r); realRoots.push(r); return r;
+}
+byName.forEach(n => {
+  if(n.mgr && byName.has(n.mgr))      byName.get(n.mgr).children.push(n);  // normal child
+  else if(n.mgr)                      ensureSynthRoot(n.mgr).children.push(n); // absent manager
+  else                                realRoots.push(n);                   // blank manager => real root
 });
 // order: primary first
-realRoots.sort((a,b)=> (a.name===PRIMARY?-1:b.name===PRIMARY?1:a.name.localeCompare(b.name)));
+function descCount(n){ let c=0; (function w(x){ x.children.forEach(k=>{ c++; w(k); }); })(n); return c; }
+realRoots.sort((a,b)=> descCount(b)-descCount(a) || a.name.localeCompare(b.name));
+const PRIMARY = realRoots.length ? realRoots[0].name : "";
 // sort children: ICs (no kids) first, managers after; alpha within group
 function sortKids(n){
   n.children.sort((a,b)=>{
@@ -135,8 +148,19 @@ function sortKids(n){
 }
 realRoots.forEach(sortKids);
 
+/* ---------- Re-root (view a single manager's subtree) ---------- */
+let rootOverride=null;
+function nodeByName(nm){ return byName.get(nm) || realRoots.find(r=>r.name===nm) || null; }
+function activeRoots(){ const n = rootOverride && nodeByName(rootOverride); return n ? [n] : realRoots; }
+function allManagers(){
+  const m=new Map();
+  realRoots.forEach(r=>{ if(r.children.length) m.set(r.name,r); });
+  byName.forEach(n=>{ if(n.children.length) m.set(n.name,n); });
+  return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name));   // alphabetical by first name
+}
+
 document.getElementById('sub').textContent =
-  "· " + byName.size + " people · root: " + PRIMARY;
+  "· " + byName.size + " people" + (PRIMARY ? " · root: " + PRIMARY : "");
 
 /* ---------- Expand state ---------- */
 const expanded = new Set();
@@ -153,7 +177,7 @@ function computeKeep(){
     n.children.forEach(c=>{ if(rec(c)) any=true; });
     if(any) KEEP.add(n.name);
     return any;
-  })({name:'__root__',synthetic:true,cls:'root',children:realRoots});
+  })({name:'__root__',synthetic:true,cls:'root',children:activeRoots()});
 }
 function kids(n){ return n.children.filter(c=>KEEP.has(c.name)); }   // filter-aware children
 function hasKids(n){ return kids(n).length>0; }                      // expandable under filter
@@ -230,7 +254,7 @@ function shift(n, dx, dy){
 let WORLD={x:0,y:0,w:0,h:0};
 function runLayout(){
   let cx=0, maxH=0;
-  realRoots.forEach((r,i)=>{ const b=layout(r,cx,0); cx+=b.w+ROOTGAP; maxH=Math.max(maxH,b.h); });
+  activeRoots().forEach((r,i)=>{ const b=layout(r,cx,0); cx+=b.w+ROOTGAP; maxH=Math.max(maxH,b.h); });
   WORLD={x:0,y:0,w:Math.max(0,cx-ROOTGAP),h:maxH};
 }
 
@@ -241,7 +265,7 @@ function visible(){
     out.push({n,depth});
     if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>walk(c,depth+1));
   }
-  realRoots.forEach(r=>walk(r,0));
+  activeRoots().forEach(r=>walk(r,0));
   return out;
 }
 
@@ -372,11 +396,11 @@ function collapseRec(n){ expanded.delete(n.name); n.children.forEach(collapseRec
 document.getElementById('fitAll').onclick=()=>fitBox(WORLD,80);
 document.getElementById('expandAll').onclick=()=>{
   byName.forEach(n=>{if(n.children.length)expanded.add(n.name);});
-  realRoots.forEach(r=>expanded.add(r.name));
+  activeRoots().forEach(r=>expanded.add(r.name));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 };
 document.getElementById('collapseAll').onclick=()=>{
-  expanded.clear(); realRoots.forEach(r=>expanded.add(r.name));
+  expanded.clear(); activeRoots().forEach(r=>expanded.add(r.name));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 };
 document.getElementById('filter').addEventListener('click',e=>{
@@ -385,6 +409,26 @@ document.getElementById('filter').addEventListener('click',e=>{
   e.currentTarget.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 });
+
+// Root selector: pick any manager to view only their subtree; clear to revert.
+const rootSel=document.getElementById('rootSel');
+const rootClear=document.getElementById('rootClear');
+allManagers().forEach(m=>{
+  const o=document.createElement('option');
+  o.value=m.name;
+  o.textContent=m.name+' ('+m.children.length+')';
+  rootSel.appendChild(o);
+});
+function applyRoot(name){
+  rootOverride = name || null;
+  rootSel.value = name || '';
+  rootClear.style.display = name ? 'inline-flex' : 'none';
+  if(name && nodeByName(name)) expanded.add(name);   // reveal the new root's reports
+  render();
+  requestAnimationFrame(()=>fitBox(WORLD,80));
+}
+rootSel.addEventListener('change',()=>applyRoot(rootSel.value));
+rootClear.addEventListener('click',()=>applyRoot(''));
 
 // wheel zoom around pointer
 svg.addEventListener('wheel',e=>{
