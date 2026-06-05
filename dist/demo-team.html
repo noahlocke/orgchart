@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Org Chart — Noah Locke</title>
+<style>
+  :root{
+    --bg:#0f1420; --panel:#1a2233; --ink:#e8edf6; --muted:#93a0b8;
+    --fte:#3b82f6; --contractor:#f59e0b; --org:#a855f7; --root:#10b981;
+    --edge:#3a465e; --card:#1f2940; --cardbd:#33415c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden}
+  #stage{position:fixed;inset:0}
+  svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+  svg.panning{cursor:grabbing}
+  .edge{fill:none;stroke:var(--edge);stroke-width:1.6}
+  .node{transition:transform .42s cubic-bezier(.22,.61,.36,1),opacity .3s ease}
+  .node.enter{opacity:0}
+  .card{width:100%;height:100%;border-radius:10px;background:var(--card);
+    border:1px solid var(--cardbd);border-left:5px solid var(--muted);
+    padding:7px 10px;display:flex;flex-direction:column;justify-content:center;
+    cursor:pointer;overflow:hidden;user-select:none;
+    box-shadow:0 2px 6px rgba(0,0,0,.35);transition:border-color .15s,box-shadow .15s,background .15s}
+  .card:hover{background:#26324d;box-shadow:0 4px 14px rgba(0,0,0,.5)}
+  /* manager nodes (have direct reports) are brighter so they pop vs. ICs */
+  .card.is-mgr{background:#33486b;border-color:#566d92;box-shadow:0 3px 12px rgba(0,0,0,.5)}
+  .card.is-mgr .nm{color:#ffffff}
+  .card.is-mgr .cls{color:#b9c6dd}
+  .card.is-mgr:hover{background:#3c5a86}
+  .card.is-mgr.c-root{background:#1b4f72;border-color:#2e7fb0}
+  .card.is-mgr.c-root:hover{background:#226291}
+  .card.has-kids:hover{border-color:#7d93ba}
+  .nm{font-size:13px;font-weight:600;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ttl{font-size:11px;color:#aeb9cf;line-height:1.15;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meta{display:flex;align-items:center;gap:6px;margin-top:4px}
+  .cls{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge{margin-left:auto;flex:none;font-size:10.5px;font-weight:700;color:var(--ink);
+    background:#2c3958;border:1px solid #3d4d70;border-radius:999px;padding:1px 7px;display:flex;align-items:center;gap:3px}
+  .badge .car{font-size:9px;transition:transform .25s}
+  .open .badge .car{transform:rotate(90deg)}
+  .c-FTE{border-left-color:var(--fte)} .c-Contractor{border-left-color:var(--contractor)}
+  .c-Org{border-left-color:var(--org)} .c-root{border-left-color:var(--root);background:#15324a}
+  .counts{display:flex;gap:7px;margin-left:auto;align-items:center}
+  .open .counts{display:none}
+  .rc{display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:var(--ink)}
+  .rc i{width:8px;height:8px;border-radius:2px;display:inline-block}
+  .rc-FTE i{background:var(--fte)} .rc-Contractor i{background:var(--contractor)} .rc-Org i{background:var(--org)}
+  .car{font-size:9px;color:var(--muted);margin-left:6px;transition:transform .25s;flex:none}
+  .open .car{transform:rotate(90deg);color:var(--ink)}
+  .seglbl{color:var(--muted);font-size:12.5px;font-weight:600;margin-left:4px}
+  .seg{display:inline-flex;border:1px solid #2c3852;border-radius:9px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .seg button{background:var(--panel);color:var(--muted);border:0;border-left:1px solid #2c3852;
+    padding:8px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .seg button:first-child{border-left:0}
+  .seg button:hover{background:#243049}
+  .seg button.on{background:#2b66c7;color:#fff}
+  #ui{position:fixed;top:14px;left:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;z-index:5}
+  .btn{background:var(--panel);color:var(--ink);border:1px solid #2c3852;border-radius:9px;
+    padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .btn:hover{background:#243049}
+  .btn:active{transform:translateY(1px)}
+  #title{background:var(--panel);border:1px solid #2c3852;border-radius:9px;padding:8px 12px;
+    font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  #title small{color:var(--muted);font-weight:500}
+  #legend{position:fixed;bottom:14px;left:14px;display:flex;gap:14px;background:var(--panel);
+    border:1px solid #2c3852;border-radius:9px;padding:8px 12px;font-size:12px;color:var(--muted);z-index:5}
+  #legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
+  #hint{position:fixed;bottom:14px;right:14px;color:var(--muted);font-size:11.5px;
+    background:var(--panel);border:1px solid #2c3852;border-radius:9px;padding:8px 12px;z-index:5}
+</style>
+</head>
+<body>
+<div id="ui">
+  <span id="title">Org Chart <small id="sub"></small></span>
+  <button class="btn" id="fitAll">Fit entire chart</button>
+  <button class="btn" id="expandAll">Expand all</button>
+  <button class="btn" id="collapseAll">Collapse all</button>
+  <span class="seglbl">Show:</span>
+  <span class="seg" id="filter">
+    <button data-f="all" class="on">Both</button>
+    <button data-f="FTE">FTE</button>
+    <button data-f="Contractor">Contractors</button>
+  </span>
+</div>
+<div id="legend">
+  <span><i style="background:var(--root)"></i>Root</span>
+  <span><i style="background:var(--fte)"></i>FTE</span>
+  <span><i style="background:var(--contractor)"></i>Contractor</span>
+  <span><i style="background:var(--org)"></i>Org</span>
+</div>
+<div id="hint">Click a node to expand/zoom · scroll to zoom · drag to pan</div>
+<div id="stage">
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+    <g id="view">
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </g>
+  </svg>
+</div>
+
+<script>
+/* ---------- DATA (injected by build.py from orgchart.csv) ---------- */
+const RAW = [{"name": "Jordan Avery", "cls": "FTE", "mgr": "", "title": "VP, Product Engineering"}, {"name": "Sam Carter", "cls": "FTE", "mgr": "Jordan Avery", "title": "Chief of Staff"}, {"name": "Riley Quinn", "cls": "Contractor", "mgr": "Jordan Avery", "title": "Program Coordinator"}, {"name": "Morgan Diaz", "cls": "FTE", "mgr": "Jordan Avery", "title": "Director, Platform"}, {"name": "Taylor Brooks", "cls": "FTE", "mgr": "Jordan Avery", "title": "Director, Applications"}, {"name": "Casey Nguyen", "cls": "FTE", "mgr": "Jordan Avery", "title": "Director, Data"}, {"name": "Jamie Park", "cls": "FTE", "mgr": "Morgan Diaz", "title": "Staff Engineer"}, {"name": "Drew Patel", "cls": "Contractor", "mgr": "Morgan Diaz", "title": "DevOps Engineer"}, {"name": "Alex Kim", "cls": "FTE", "mgr": "Morgan Diaz", "title": "Engineering Manager, Infrastructure"}, {"name": "Pat Olsen", "cls": "FTE", "mgr": "Alex Kim", "title": "Backend Engineer"}, {"name": "Robin Shah", "cls": "FTE", "mgr": "Alex Kim", "title": "Backend Engineer"}, {"name": "Lee Fisher", "cls": "Contractor", "mgr": "Alex Kim", "title": "Site Reliability Engineer"}, {"name": "Dana Cruz", "cls": "FTE", "mgr": "Alex Kim", "title": "Backend Engineer"}, {"name": "Jesse Reed", "cls": "FTE", "mgr": "Taylor Brooks", "title": "Senior iOS Engineer"}, {"name": "Sky Turner", "cls": "FTE", "mgr": "Taylor Brooks", "title": "Android Engineer"}, {"name": "Noor Ali", "cls": "Contractor", "mgr": "Taylor Brooks", "title": "QA Engineer"}, {"name": "Chris Bell", "cls": "FTE", "mgr": "Taylor Brooks", "title": "Engineering Manager, Web"}, {"name": "Erin Lopez", "cls": "FTE", "mgr": "Chris Bell", "title": "Frontend Engineer"}, {"name": "Toni Mehta", "cls": "Contractor", "mgr": "Chris Bell", "title": "Frontend Engineer"}, {"name": "Val Romero", "cls": "FTE", "mgr": "Chris Bell", "title": "Frontend Engineer"}, {"name": "Quinn Ford", "cls": "FTE", "mgr": "Casey Nguyen", "title": "Data Scientist"}, {"name": "Ira Bose", "cls": "Contractor", "mgr": "Casey Nguyen", "title": "Data Engineer"}, {"name": "Reese Gray", "cls": "FTE", "mgr": "Casey Nguyen", "title": "Manager, Analytics"}, {"name": "Hayden Cole", "cls": "FTE", "mgr": "Reese Gray", "title": "Analytics Engineer"}, {"name": "Sasha Vance", "cls": "FTE", "mgr": "Reese Gray", "title": "BI Analyst"}, {"name": "Marlowe Tan", "cls": "Contractor", "mgr": "Reese Gray", "title": "Data Analyst"}];
+
+/* ---------- Build forest ---------- */
+const PRIMARY = "Noah Locke";
+const byName = new Map();
+RAW.forEach(r => byName.set(r.name, {name:r.name, cls:r.cls, mgr:r.mgr, title:r.title||"", children:[]}));
+const roots = [];
+byName.forEach(n => {
+  const p = n.mgr && byName.get(n.mgr);
+  if (p) p.children.push(n);
+  else { if(!byName.has(n.mgr)) roots.push({name:n.mgr, cls:"root", children:[n], synthetic:true}); }
+});
+// merge synthetic roots that share a manager name
+const rootMap = new Map();
+const realRoots = [];
+roots.forEach(r=>{
+  if(rootMap.has(r.name)){ rootMap.get(r.name).children.push(...r.children); }
+  else { rootMap.set(r.name, r); realRoots.push(r); }
+});
+// order: primary first
+realRoots.sort((a,b)=> (a.name===PRIMARY?-1:b.name===PRIMARY?1:a.name.localeCompare(b.name)));
+// sort children: ICs (no kids) first, managers after; alpha within group
+function sortKids(n){
+  n.children.sort((a,b)=>{
+    const am=a.children.length>0, bm=b.children.length>0;
+    if(am!==bm) return am?1:-1;            // ICs above managers
+    return a.name.localeCompare(b.name);
+  });
+  n.children.forEach(sortKids);
+}
+realRoots.forEach(sortKids);
+
+document.getElementById('sub').textContent =
+  "· " + byName.size + " people · root: " + PRIMARY;
+
+/* ---------- Expand state ---------- */
+const expanded = new Set();
+realRoots.forEach(r=>expanded.add(r.name));          // show root rows
+
+/* ---------- Class filter ---------- */
+let FILTER='all';                 // 'all' | 'FTE' | 'Contractor'
+let KEEP=new Set();
+function passes(n){ if(FILTER==='all') return true; if(n.synthetic) return true; return n.cls===FILTER; }
+function computeKeep(){
+  KEEP=new Set();
+  (function rec(n){
+    let any=passes(n);
+    n.children.forEach(c=>{ if(rec(c)) any=true; });
+    if(any) KEEP.add(n.name);
+    return any;
+  })({name:'__root__',synthetic:true,cls:'root',children:realRoots});
+}
+function kids(n){ return n.children.filter(c=>KEEP.has(c.name)); }   // filter-aware children
+function hasKids(n){ return kids(n).length>0; }                      // expandable under filter
+function isOpen(n){return expanded.has(n.name);}
+function classCounts(n){ const c={}; n.children.forEach(k=>{const key=k.cls||'?'; c[key]=(c[key]||0)+1;}); return c; }
+
+/* ---------- Layout constants ---------- */
+const CW=216, CH=70, VGAP=16, HGAP=30, DROP=40, ROOTGAP=70;
+
+/* Recursive layout. Sets n.x,n.y (card top-left) and n.bx,n.by,n.bw,n.bh (subtree box).
+   Returns {w,h} of subtree box, placed with top-left at (x,y). */
+function layout(n, x, y){
+  if(!hasKids(n) || !isOpen(n)){
+    n.bx=x; n.by=y; n.bw=CW; n.bh=CH;
+    n.x = x; n.y = y;
+    return {w:CW,h:CH};
+  }
+  const ch   = kids(n);
+  const ics  = ch.filter(c=>!hasKids(c));
+  const mgrs = ch.filter(c=> hasKids(c));
+  const childTop = y + CH + DROP;
+
+  // IC block: single vertical column
+  let icW=0, icH=0;
+  if(ics.length){ icW=CW; icH=ics.length*CH + (ics.length-1)*VGAP; }
+
+  // Manager block: lay subtrees horizontally (temporarily at 0), measure
+  let mgrW=0, mgrH=0;
+  const mgrBoxes=[];
+  if(mgrs.length){
+    let cx=0;
+    mgrs.forEach((m,i)=>{
+      const b=layout(m, cx, 0);            // provisional x; shift later
+      mgrBoxes.push(b);
+      cx += b.w + (i<mgrs.length-1?HGAP:0);
+      mgrH=Math.max(mgrH,b.h);
+    });
+    mgrW=cx;
+  }
+
+  const childW = Math.max(icW, mgrW, CW);
+  const childLeft = x + (Math.max(CW,childW) - childW)/2;
+  const subW = Math.max(CW, childW);
+
+  // place IC column centered in childW
+  let yy = childTop;
+  if(ics.length){
+    const icLeft = childLeft + (childW - icW)/2;
+    ics.forEach(c=>{ layout(c, icLeft, yy); yy += CH + VGAP; });
+    yy = childTop + icH + (mgrs.length?VGAP:0);
+  }
+  // place manager subtrees centered in childW (shift provisional positions)
+  if(mgrs.length){
+    const mgrLeft = childLeft + (childW - mgrW)/2;
+    let cx = mgrLeft;
+    mgrs.forEach((m,i)=>{
+      const b=mgrBoxes[i];
+      shift(m, cx - m.bx, yy - m.by);
+      cx += b.w + HGAP;
+    });
+  }
+
+  const subH = CH + DROP + (icH + (ics.length&&mgrs.length?VGAP:0) + mgrH);
+  n.bx=x; n.by=y; n.bw=subW; n.bh=subH;
+  n.x = x + (subW - CW)/2;            // center card over its subtree
+  n.y = y;
+  return {w:subW,h:subH};
+}
+function shift(n, dx, dy){
+  n.x+=dx; n.y+=dy; n.bx+=dx; n.by+=dy;
+  if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>shift(c,dx,dy));
+}
+
+let WORLD={x:0,y:0,w:0,h:0};
+function runLayout(){
+  let cx=0, maxH=0;
+  realRoots.forEach((r,i)=>{ const b=layout(r,cx,0); cx+=b.w+ROOTGAP; maxH=Math.max(maxH,b.h); });
+  WORLD={x:0,y:0,w:Math.max(0,cx-ROOTGAP),h:maxH};
+}
+
+/* ---------- Collect visible nodes & edges ---------- */
+function visible(){
+  const out=[];
+  function walk(n,depth){
+    out.push({n,depth});
+    if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>walk(c,depth+1));
+  }
+  realRoots.forEach(r=>walk(r,0));
+  return out;
+}
+
+/* ---------- Render (keyed for animation) ---------- */
+const SVGNS="http://www.w3.org/2000/svg";
+const gNodes=document.getElementById('nodes');
+const gEdges=document.getElementById('edges');
+const elMap=new Map();   // name -> {g, fo}
+
+function classKey(n){ return n.synthetic?'root':(n.cls||'').replace(/\s+/g,''); }
+
+function metaHTML(n){
+  let s=`<span class="cls">${esc(n.synthetic?'Root':n.cls)}</span>`;
+  if(n.children.length){
+    const c=classCounts(n), order=['FTE','Contractor','Org'];
+    const chipOk=k=>(FILTER==='all'||k===FILTER);   // respect active class filter
+    let chips='';
+    order.forEach(k=>{ if(c[k]&&chipOk(k)) chips+=`<span class="rc rc-${k}" title="${c[k]} ${k}"><i></i>${c[k]}</span>`; });
+    Object.keys(c).forEach(k=>{ if(!order.includes(k)&&chipOk(k)) chips+=`<span class="rc" title="${c[k]} ${esc(k)}"><i style="background:var(--muted)"></i>${c[k]}</span>`; });
+    s+=`<span class="counts">${chips}</span>`;
+    if(hasKids(n)) s+=`<span class="car">▸</span>`;
+  }
+  return s;
+}
+
+function render(){
+  computeKeep();
+  runLayout();
+  const vis=visible();
+  const seen=new Set();
+
+  // edges
+  let dpath="";
+  vis.forEach(({n})=>{
+    if(hasKids(n)&&isOpen(n)){
+      const px=n.x+CW/2, py=n.y+CH;
+      kids(n).forEach(c=>{
+        const cx=c.x+CW/2, cy=c.y, midY=py+DROP*0.55;
+        dpath+=`M${px},${py} V${midY} H${cx} V${cy} `;
+      });
+    }
+  });
+  gEdges.innerHTML=`<path class="edge" d="${dpath}"></path>`;
+
+  // nodes
+  vis.forEach(({n})=>{
+    seen.add(n.name);
+    let rec=elMap.get(n.name);
+    if(!rec){
+      const g=document.createElementNS(SVGNS,'g');
+      g.setAttribute('class','node enter');
+      const fo=document.createElementNS(SVGNS,'foreignObject');
+      fo.setAttribute('width',CW); fo.setAttribute('height',CH);
+      g.appendChild(fo);
+      gNodes.appendChild(g);
+      rec={g,fo};
+      elMap.set(n.name,rec);
+      const card=document.createElement('div');
+      card.className='card c-'+classKey(n);
+      card.innerHTML =
+        `<div class="nm" title="${esc(n.name)}">${esc(n.name)}</div>`+
+        (n.title?`<div class="ttl" title="${esc(n.title)}">${esc(n.title)}</div>`:``)+
+        `<div class="meta"></div>`;
+      card.addEventListener('click',ev=>{ ev.stopPropagation(); onNodeClick(n); });
+      fo.appendChild(card);
+      rec.card=card; rec.meta=card.querySelector('.meta');
+      requestAnimationFrame(()=>g.classList.remove('enter'));
+    }
+    rec.g.setAttribute('transform',`translate(${n.x},${n.y})`);
+    rec.meta.innerHTML=metaHTML(n);                          // refresh counts/caret per filter
+    rec.card.classList.toggle('has-kids', hasKids(n));
+    rec.card.classList.toggle('is-mgr', n.children.length>0);
+    rec.card.classList.toggle('open', isOpen(n)&&hasKids(n));
+  });
+
+  // remove gone
+  elMap.forEach((rec,name)=>{
+    if(!seen.has(name)){ rec.g.remove(); elMap.delete(name); }
+  });
+}
+function countAll(n){let c=0;(function w(x){x.children.forEach(k=>{c++;w(k);});})(n);return c;}
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+/* ---------- Camera ---------- */
+const svg=document.getElementById('svg');
+const view=document.getElementById('view');
+let cam={k:1,tx:0,ty:0};
+const MINK=0.04, MAXK=2.4;
+function apply(){ view.setAttribute('transform',`translate(${cam.tx},${cam.ty}) scale(${cam.k})`); }
+function vw(){return svg.clientWidth;} function vh(){return svg.clientHeight;}
+
+function fitBox(b,pad=60,animate=true){
+  if(!b||b.w<=0||b.h<=0) return;
+  const k=Math.max(MINK,Math.min(MAXK, Math.min((vw()-2*pad)/b.w,(vh()-2*pad)/b.h)));
+  const tx=vw()/2 - k*(b.x+b.w/2);
+  const ty=vh()/2 - k*(b.y+b.h/2);
+  animate?animateTo({k,tx,ty}):set({k,tx,ty});
+}
+function set(t){cam=t;apply();}
+let raf=null;
+function animateTo(t,dur=460){
+  cancelAnimationFrame(raf);
+  const s={...cam}, t0=performance.now();
+  const ease=x=>1-Math.pow(1-x,3);
+  (function step(now){
+    const p=Math.min(1,(now-t0)/dur), e=ease(p);
+    cam={k:s.k+(t.k-s.k)*e, tx:s.tx+(t.tx-s.tx)*e, ty:s.ty+(t.ty-s.ty)*e};
+    apply();
+    if(p<1) raf=requestAnimationFrame(step);
+  })(t0);
+}
+
+/* ---------- Interactions ---------- */
+function onNodeClick(n){
+  if(hasKids(n)){
+    if(isOpen(n)) collapseRec(n); else expanded.add(n.name);
+  }
+  render();
+  // after layout, zoom to the clicked node's subtree (or the node if leaf/collapsed)
+  requestAnimationFrame(()=>{
+    const b = (hasKids(n)&&isOpen(n)) ? {x:n.bx,y:n.by,w:n.bw,h:n.bh}
+                                      : {x:n.x,y:n.y,w:CW,h:CH};
+    fitBox(b, 70);
+  });
+}
+function collapseRec(n){ expanded.delete(n.name); n.children.forEach(collapseRec); }
+
+document.getElementById('fitAll').onclick=()=>fitBox(WORLD,80);
+document.getElementById('expandAll').onclick=()=>{
+  byName.forEach(n=>{if(n.children.length)expanded.add(n.name);});
+  realRoots.forEach(r=>expanded.add(r.name));
+  render(); requestAnimationFrame(()=>fitBox(WORLD,80));
+};
+document.getElementById('collapseAll').onclick=()=>{
+  expanded.clear(); realRoots.forEach(r=>expanded.add(r.name));
+  render(); requestAnimationFrame(()=>fitBox(WORLD,80));
+};
+document.getElementById('filter').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  FILTER=b.dataset.f;
+  e.currentTarget.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+  render(); requestAnimationFrame(()=>fitBox(WORLD,80));
+});
+
+// wheel zoom around pointer
+svg.addEventListener('wheel',e=>{
+  e.preventDefault();
+  const r=svg.getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  const wx=(mx-cam.tx)/cam.k, wy=(my-cam.ty)/cam.k;
+  const f=Math.exp(-e.deltaY*0.0015);
+  const k=Math.max(MINK,Math.min(MAXK,cam.k*f));
+  set({k, tx:mx-wx*k, ty:my-wy*k});
+},{passive:false});
+
+// drag to pan
+let drag=null;
+svg.addEventListener('pointerdown',e=>{
+  // don't start a pan when pressing on a card — let the click through
+  if(e.target.closest && e.target.closest('.card')) return;
+  drag={x:e.clientX,y:e.clientY,tx:cam.tx,ty:cam.ty,id:e.pointerId,moved:false};
+  svg.classList.add('panning');
+});
+svg.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  if(!drag.moved && Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y)>3){
+    drag.moved=true; try{svg.setPointerCapture(drag.id);}catch(_){}
+  }
+  if(!drag.moved) return;
+  cancelAnimationFrame(raf);
+  set({k:cam.k, tx:drag.tx+(e.clientX-drag.x), ty:drag.ty+(e.clientY-drag.y)});
+});
+function endDrag(){drag=null;svg.classList.remove('panning');}
+svg.addEventListener('pointerup',endDrag);
+svg.addEventListener('pointercancel',endDrag);
+
+window.addEventListener('resize',()=>fitBox(WORLD,80,false));
+
+/* ---------- Boot ---------- */
+render();
+requestAnimationFrame(()=>fitBox(WORLD,80,false));
+</script>
+</body>
+</html>

@@ -10,10 +10,12 @@ Repository layout:
   examples/sample-org.html sample demo build        (tracked)
 
 Usage:
-  python3 build.py                          # data/orgchart.csv -> dist/orgchart.html
-  python3 build.py INPUT.csv                # INPUT.csv -> dist/<name>.html
-  python3 build.py INPUT.csv OUTPUT.html    # explicit input and output
-  python3 build.py --sample                 # build the bundled sample demo
+  python3 build.py SOURCE NAME    # build SOURCE (csv) -> dist/NAME.html
+  python3 build.py --sample       # build the bundled sample demo
+
+Generate as many charts as you like by giving each a unique NAME, e.g.:
+  python3 build.py data/orgchart.csv  company      ->  dist/company.html
+  python3 build.py data/sales.csv     sales-team   ->  dist/sales-team.html
 
 CSV columns (header row required; matched case-insensitively, common aliases ok):
   Name       (required)   employee name
@@ -104,17 +106,26 @@ def build(src, out):
     if len(roots) > 1:
         print("  NOTE: multiple roots detected -- each renders as its own top-level tree.")
 
+USAGE = (
+    "Usage:\n"
+    "  python3 build.py SOURCE NAME    # SOURCE csv -> dist/NAME.html\n"
+    "  python3 build.py --sample       # build the bundled sample demo\n"
+)
+
 def main():
-    args = [a for a in sys.argv[1:] if a != "--sample"]
-    if "--sample" in sys.argv:
+    argv = sys.argv[1:]
+    if "--sample" in argv:
         build(SAMPLE_IN, SAMPLE_OUT)
         return
-    src = args[0] if len(args) > 0 else DEFAULT_IN
-    if len(args) > 1:
-        out = args[1]
-    else:
-        base = os.path.splitext(os.path.basename(src))[0] + ".html"
-        out = os.path.join(DIST, base)
+    if len(argv) != 2:
+        raise SystemExit(USAGE)
+    src, name = argv
+    # NAME is just a label; force the output into dist/ as <name>.html so
+    # multiple charts never collide.
+    stem = os.path.splitext(os.path.basename(name))[0]
+    if not stem:
+        raise SystemExit("ERROR: NAME must be a non-empty file name (e.g. 'company').")
+    out = os.path.join(DIST, stem + ".html")
     build(src, out)
 
 if __name__ == "__main__":

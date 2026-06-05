@@ -46,12 +46,12 @@ generated from it never get committed.
 
 ```bash
 # 1. See the demo
-open examples/sample-org.html        # macOS  (or just double-click it)
+open examples/sample-org.html                 # macOS (or just double-click it)
 
 # 2. Build from your own data
 cp your-people.csv data/orgchart.csv
-./build.sh                           # -> dist/orgchart.html
-open dist/orgchart.html
+./build.sh data/orgchart.csv company          # -> dist/company.html
+open dist/company.html
 ```
 
 Requires Python 3 (standard library only — no packages to install).
@@ -73,12 +73,19 @@ multiple roots render side by side.
 
 ## Build commands
 
+The build script takes two arguments — a **source** CSV and an output **name** —
+so you can keep many charts side by side in `dist/` without overwriting each other:
+
 ```bash
-python3 build.py                       # data/orgchart.csv  -> dist/orgchart.html
-python3 build.py --sample              # examples/sample-org.csv -> examples/sample-org.html
-python3 build.py path/to/people.csv    # custom input -> dist/people.html
-python3 build.py in.csv out.html       # explicit input and output
+./build.sh SOURCE NAME                 # SOURCE csv -> dist/NAME.html
+
+./build.sh data/orgchart.csv company   # -> dist/company.html
+./build.sh data/sales.csv   sales-team # -> dist/sales-team.html
+./build.sh --sample                    # rebuild examples/sample-org.html
 ```
+
+`NAME` is just a label; the output always lands in `dist/<NAME>.html`
+(a `.html` you include is ignored, so `company` and `company.html` are equivalent).
 
 ## Customizing the chart
 
