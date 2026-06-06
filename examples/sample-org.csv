@@ -1,27 +1,27 @@
-Name,Class,Manager,Job Title
-Jordan Avery,FTE,,"VP, Product Engineering"
-Sam Carter,FTE,Jordan Avery,Chief of Staff
-Riley Quinn,Contractor,Jordan Avery,Program Coordinator
-Morgan Diaz,FTE,Jordan Avery,"Director, Platform"
-Taylor Brooks,FTE,Jordan Avery,"Director, Applications"
-Casey Nguyen,FTE,Jordan Avery,"Director, Data"
-Jamie Park,FTE,Morgan Diaz,Staff Engineer
-Drew Patel,Contractor,Morgan Diaz,DevOps Engineer
-Alex Kim,FTE,Morgan Diaz,"Engineering Manager, Infrastructure"
-Pat Olsen,FTE,Alex Kim,Backend Engineer
-Robin Shah,FTE,Alex Kim,Backend Engineer
-Lee Fisher,Contractor,Alex Kim,Site Reliability Engineer
-Dana Cruz,FTE,Alex Kim,Backend Engineer
-Jesse Reed,FTE,Taylor Brooks,Senior iOS Engineer
-Sky Turner,FTE,Taylor Brooks,Android Engineer
-Noor Ali,Contractor,Taylor Brooks,QA Engineer
-Chris Bell,FTE,Taylor Brooks,"Engineering Manager, Web"
-Erin Lopez,FTE,Chris Bell,Frontend Engineer
-Toni Mehta,Contractor,Chris Bell,Frontend Engineer
-Val Romero,FTE,Chris Bell,Frontend Engineer
-Quinn Ford,FTE,Casey Nguyen,Data Scientist
-Ira Bose,Contractor,Casey Nguyen,Data Engineer
-Reese Gray,FTE,Casey Nguyen,"Manager, Analytics"
-Hayden Cole,FTE,Reese Gray,Analytics Engineer
-Sasha Vance,FTE,Reese Gray,BI Analyst
-Marlowe Tan,Contractor,Reese Gray,Data Analyst
+Name,Class,Manager,Job Title,Tags
+Jordan Avery,FTE,,"VP, Product Engineering",
+Sam Carter,FTE,Jordan Avery,Chief of Staff,
+Riley Quinn,Contractor,Jordan Avery,Program Coordinator,Watch
+Morgan Diaz,FTE,Jordan Avery,"Director, Platform",Review
+Taylor Brooks,FTE,Jordan Avery,"Director, Applications",
+Casey Nguyen,FTE,Jordan Avery,"Director, Data",
+Jamie Park,FTE,Morgan Diaz,Staff Engineer,Promote
+Drew Patel,Contractor,Morgan Diaz,DevOps Engineer,
+Alex Kim,FTE,Morgan Diaz,"Engineering Manager, Infrastructure",Promote|Watch
+Pat Olsen,FTE,Alex Kim,Backend Engineer,
+Robin Shah,FTE,Alex Kim,Backend Engineer,
+Lee Fisher,Contractor,Alex Kim,Site Reliability Engineer,Reassign
+Dana Cruz,FTE,Alex Kim,Backend Engineer,
+Jesse Reed,FTE,Taylor Brooks,Senior iOS Engineer,
+Sky Turner,FTE,Taylor Brooks,Android Engineer,
+Noor Ali,Contractor,Taylor Brooks,QA Engineer,Watch
+Chris Bell,FTE,Taylor Brooks,"Engineering Manager, Web",
+Erin Lopez,FTE,Chris Bell,Frontend Engineer,
+Toni Mehta,Contractor,Chris Bell,Frontend Engineer,
+Val Romero,FTE,Chris Bell,Frontend Engineer,
+Quinn Ford,FTE,Casey Nguyen,Data Scientist,
+Ira Bose,Contractor,Casey Nguyen,Data Engineer,
+Reese Gray,FTE,Casey Nguyen,"Manager, Analytics",Review
+Hayden Cole,FTE,Reese Gray,Analytics Engineer,
+Sasha Vance,FTE,Reese Gray,BI Analyst,
+Marlowe Tan,Contractor,Reese Gray,Data Analyst,

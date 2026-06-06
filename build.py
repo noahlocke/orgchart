@@ -37,6 +37,7 @@ ALIASES = {
     "cls":   ["class", "type", "employee class", "worker type"],
     "mgr":   ["manager", "reports to", "manager name", "supervisor"],
     "title": ["job title", "title", "role", "position", "job"],
+    "tags":  ["tags", "labels"],
 }
 
 def norm(s):
@@ -75,6 +76,9 @@ def load_rows(path):
         rec = {"name": name, "cls": get("cls"), "mgr": get("mgr")}
         if "title" in cols:
             rec["title"] = get("title")
+        if "tags" in cols:
+            raw = get("tags")
+            rec["tags"] = [t.strip() for t in raw.split("|") if t.strip()][:2] if raw else []
         out.append(rec)
     return out, ("title" in cols)
 
