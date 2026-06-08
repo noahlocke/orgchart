@@ -4,7 +4,7 @@
     {
       "name": "orgchart",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "7891", "--directory", "examples"],
+      "runtimeArgs": ["server.py", "7891"],
       "port": 7891
     }
   ]

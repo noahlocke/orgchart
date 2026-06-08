@@ -101,6 +101,25 @@
   body.editing .tag-btn{display:block}
   body.editing .card:hover .tag-btn{background:#3d4d70;color:var(--ink)}
 
+  /* Delete node button (edit mode only) */
+  .del-node-btn{display:none;position:absolute;top:3px;left:5px;width:16px;height:16px;border-radius:50%;
+    background:#2c3958;border:1px solid #3d4d70;cursor:pointer;font-size:13px;line-height:14px;
+    text-align:center;color:var(--muted);padding:0;z-index:2}
+  body.editing .del-node-btn{display:block}
+  body.editing .card:hover .del-node-btn{background:#5a2020;border-color:#8a3a3a;color:#ef4444}
+
+  /* Add/Delete node modals */
+  #node-editor .modal-box{min-width:320px;max-width:380px}
+  #node-editor label{display:block;font-size:11px;color:var(--muted);font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px}
+  #node-editor input[type=text],#node-editor select{width:100%;background:#0f1420;color:var(--ink);
+    border:1px solid #3d4d70;border-radius:6px;padding:7px 10px;font-size:13px;
+    font-family:inherit;appearance:none}
+  #node-editor input[type=text]:focus,#node-editor select:focus{outline:none;border-color:#3b82f6}
+  #delete-confirm .modal-box{min-width:300px;max-width:340px}
+  #delete-confirm p{font-size:13px;line-height:1.55;color:var(--muted);margin:0 0 4px}
+  #delete-confirm strong{color:var(--ink)}
+
   /* Dragging cursor in edit mode */
   body.editing .node{cursor:grab}
 
@@ -154,6 +173,15 @@
     padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;width:100%;font-family:inherit}
   #tag-add-btn:hover{background:#2c3958}
 
+  /* Charts browser modal */
+  #charts-modal .modal-box{min-width:320px;max-width:400px}
+  #charts-list{max-height:320px;overflow-y:auto;margin-top:4px}
+  .chart-item{display:block;width:100%;text-align:left;background:#0f1420;color:var(--ink);
+    border:1px solid #3d4d70;border-radius:7px;padding:9px 12px;font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;margin-bottom:6px}
+  .chart-item:hover{background:#243049;border-color:#4a6090}
+  .charts-loading,.charts-empty{font-size:12.5px;color:var(--muted);padding:8px 2px}
+
   /* Save modal */
   #save-modal .modal-box{min-width:340px}
   #save-modal input[type=text]{width:100%;background:#0f1420;color:var(--ink);border:1px solid #3d4d70;
@@ -181,9 +209,12 @@
     <select id="rootSel"><option value="">Full organization (default)</option></select>
     <button id="rootClear" class="xbtn" title="Reset to full organization">&times;</button>
   </span>
+  <button class="btn" id="browseChartsBtn">📂 Charts</button>
   <button class="btn" id="editToggle">✏ Edit mode</button>
   <button class="btn edit-only" id="undoBtn" disabled title="Undo last move (Ctrl+Z)">↩ Undo</button>
+  <button class="btn edit-only" id="addNodeBtn">＋ Add node</button>
   <button class="btn edit-only" id="tagEditorBtn">⚙ Tags</button>
+  <button class="btn edit-only" id="saveHtmlBtn">⬇ Save HTML…</button>
   <button class="btn edit-only" id="saveBtn">⬇ Save CSV…</button>
 </div>
 <div id="legend">
@@ -214,6 +245,53 @@
   <div class="pop-title">Tags (max 2)</div>
   <div id="pop-items"></div>
   <div class="pop-limit" id="pop-limit">Max 2 tags — remove one first</div>
+</div>
+
+<!-- Browse charts modal -->
+<div id="charts-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Open chart</h3>
+    <div id="charts-list"><div class="charts-loading">Loading…</div></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="chartsCloseBtn">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add node modal -->
+<div id="node-editor" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Add node</h3>
+    <label for="ne-name">Name <span style="color:#ef4444">*</span></label>
+    <input type="text" id="ne-name" placeholder="Full name" autocomplete="off">
+    <label for="ne-title">Title</label>
+    <input type="text" id="ne-title" placeholder="Job title (optional)" autocomplete="off">
+    <label for="ne-cls">Class</label>
+    <select id="ne-cls">
+      <option value="FTE">FTE</option>
+      <option value="Contractor">Contractor</option>
+      <option value="Org">Org</option>
+    </select>
+    <label for="ne-mgr">Manager</label>
+    <select id="ne-mgr"><option value="">(none — top-level)</option></select>
+    <div id="ne-err" style="color:#ef4444;font-size:12px;margin-top:8px;display:none"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="neCancel">Cancel</button>
+      <button class="btn-primary" id="neConfirm">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete node confirm modal -->
+<div id="delete-confirm" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Delete node</h3>
+    <p id="del-msg"></p>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="delCancel">Cancel</button>
+      <button class="btn-primary" style="background:#b91c1c" id="delConfirm">Delete</button>
+    </div>
+  </div>
 </div>
 
 <!-- Tag palette editor -->
@@ -462,7 +540,8 @@ function render(){
         `<div class="nm" title="${esc(n.name)}">${esc(n.name)}</div>`+
         (n.title?`<div class="ttl" title="${esc(n.title)}">${esc(n.title)}</div>`:'')+
         `<div class="meta"></div>`+
-        `<button class="tag-btn" title="Edit tags">▾</button>`;
+        `<button class="tag-btn" title="Edit tags">▾</button>`+
+        `<button class="del-node-btn" title="Delete node">×</button>`;
       card.addEventListener('click',ev=>{
         ev.stopPropagation();
         if(!EDIT) onNodeClick(n);
@@ -470,6 +549,8 @@ function render(){
       });
       const tagBtn=card.querySelector('.tag-btn');
       tagBtn.addEventListener('click',ev=>{ ev.stopPropagation(); if(EDIT) openTagPopover(n,tagBtn); });
+      const delBtn=card.querySelector('.del-node-btn');
+      delBtn.addEventListener('click',ev=>{ ev.stopPropagation(); if(EDIT) confirmDeleteNode(n); });
       fo.appendChild(card);
       rec.card=card;
       rec.meta=card.querySelector('.meta');
@@ -564,27 +645,156 @@ function reparent(node, newParent){
   sortKids(newParent);
   updateUndoBtn();
   render();
-  requestAnimationFrame(()=>{
-    const b=newParent.bw&&newParent.bh
-      ?{x:newParent.bx,y:newParent.by,w:newParent.bw,h:newParent.bh}
-      :WORLD;
-    fitBox(b,80);
-  });
 }
 
 function undo(){
   const op=undoStack.pop();
   if(!op) return;
-  const {node,oldParent,newParent,oldMgr}=op;
-  newParent.children=newParent.children.filter(c=>c!==node);
-  node.mgr=oldMgr;
-  node.parent=oldParent;
-  if(oldParent){ oldParent.children.push(node); sortKids(oldParent); }
+  if(op.type==='delete'){
+    // Re-add all deleted nodes to byName
+    op.deleted.forEach(n=>byName.set(n.name,n));
+    // Re-attach root node to its parent or realRoots
+    if(op.parent){
+      op.parent.children.push(op.node);
+      sortKids(op.parent);
+    } else {
+      realRoots.push(op.node);
+      realRoots.sort((a,b)=>descCount(b)-descCount(a)||a.name.localeCompare(b.name));
+    }
+  } else if(op.type==='add'){
+    // Remove the added node
+    byName.delete(op.node.name);
+    if(op.parent){
+      op.parent.children=op.parent.children.filter(c=>c!==op.node);
+    } else {
+      const i=realRoots.indexOf(op.node);
+      if(i>=0) realRoots.splice(i,1);
+    }
+    expanded.delete(op.node.name);
+  } else {
+    // reparent (legacy op)
+    const {node,oldParent,newParent,oldMgr}=op;
+    newParent.children=newParent.children.filter(c=>c!==node);
+    node.mgr=oldMgr;
+    node.parent=oldParent;
+    if(oldParent){ oldParent.children.push(node); sortKids(oldParent); }
+  }
   updateUndoBtn();
   render();
   requestAnimationFrame(()=>fitBox(WORLD,80));
 }
 document.getElementById('undoBtn').addEventListener('click',undo);
+
+/* ---------- Delete node ---------- */
+let pendingDeleteNode=null;
+const deleteConfirmModal=document.getElementById('delete-confirm');
+const delMsg=document.getElementById('del-msg');
+
+function confirmDeleteNode(node){
+  pendingDeleteNode=node;
+  const sub=[];
+  (function w(n){ n.children.forEach(c=>{ sub.push(c); w(c); }); })(node);
+  delMsg.innerHTML=sub.length
+    ? `Delete <strong>${esc(node.name)}</strong> and <strong>${sub.length}</strong> report${sub.length===1?'':'s'} under them? This cannot be undone without ↩ Undo.`
+    : `Delete <strong>${esc(node.name)}</strong>? This can be undone with ↩ Undo.`;
+  deleteConfirmModal.classList.add('show');
+}
+
+function executeDelete(){
+  const node=pendingDeleteNode;
+  if(!node) return;
+  pendingDeleteNode=null;
+  deleteConfirmModal.classList.remove('show');
+
+  const deleted=[];
+  (function collect(n){ deleted.push(n); n.children.forEach(collect); })(node);
+  deleted.forEach(n=>{ byName.delete(n.name); expanded.delete(n.name); });
+
+  const parent=node.parent;
+  if(parent){
+    parent.children=parent.children.filter(c=>c!==node);
+  } else {
+    const i=realRoots.indexOf(node);
+    if(i>=0) realRoots.splice(i,1);
+  }
+  node.parent=null;
+
+  undoStack.push({type:'delete', node, parent, deleted});
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>fitBox(WORLD,80));
+}
+
+document.getElementById('delConfirm').addEventListener('click',executeDelete);
+document.getElementById('delCancel').addEventListener('click',()=>{
+  pendingDeleteNode=null;
+  deleteConfirmModal.classList.remove('show');
+});
+
+/* ---------- Add node ---------- */
+const nodeEditorModal=document.getElementById('node-editor');
+const neName=document.getElementById('ne-name');
+const neTitle=document.getElementById('ne-title');
+const neCls=document.getElementById('ne-cls');
+const neMgr=document.getElementById('ne-mgr');
+const neErr=document.getElementById('ne-err');
+
+function openAddNodeModal(){
+  // Populate manager dropdown with all current nodes
+  neMgr.innerHTML='<option value="">(none — top-level)</option>';
+  const allNodes=[...byName.values(),...realRoots.filter(r=>r.synthetic)];
+  allNodes.sort((a,b)=>a.name.localeCompare(b.name));
+  allNodes.forEach(n=>{
+    const o=document.createElement('option');
+    o.value=n.name; o.textContent=n.name+(n.title?' — '+n.title:'');
+    neMgr.appendChild(o);
+  });
+  neName.value=''; neTitle.value=''; neCls.value='FTE'; neMgr.value='';
+  neErr.style.display='none';
+  nodeEditorModal.classList.add('show');
+  requestAnimationFrame(()=>neName.focus());
+}
+
+function executeAdd(){
+  const name=neName.value.trim();
+  if(!name){ neErr.textContent='Name is required.'; neErr.style.display='block'; return; }
+  if(byName.has(name)||realRoots.find(r=>r.name===name)){
+    neErr.textContent='A node with that name already exists.'; neErr.style.display='block'; return;
+  }
+  neErr.style.display='none';
+  nodeEditorModal.classList.remove('show');
+
+  const cls=neCls.value;
+  const title=neTitle.value.trim();
+  const mgrName=neMgr.value;
+  const parent=mgrName?nodeByName(mgrName):null;
+
+  const node={name, cls, mgr:parent?parent.name:'', title, tags:[], children:[], parent:null};
+  byName.set(name, node);
+
+  if(parent){
+    node.parent=parent;
+    parent.children.push(node);
+    sortKids(parent);
+    expanded.add(parent.name);
+  } else {
+    realRoots.push(node);
+    realRoots.sort((a,b)=>descCount(b)-descCount(a)||a.name.localeCompare(b.name));
+  }
+
+  undoStack.push({type:'add', node, parent});
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>{
+    const target=parent||node;
+    fitBox({x:target.x,y:target.y,w:CW,h:CH},80);
+  });
+}
+
+document.getElementById('addNodeBtn').addEventListener('click',openAddNodeModal);
+document.getElementById('neConfirm').addEventListener('click',executeAdd);
+document.getElementById('neCancel').addEventListener('click',()=>nodeEditorModal.classList.remove('show'));
+neName.addEventListener('keydown',e=>{ if(e.key==='Enter') executeAdd(); if(e.key==='Escape') nodeEditorModal.classList.remove('show'); });
 document.addEventListener('keydown',e=>{
   if(EDIT&&(e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); undo(); }
 });
@@ -738,7 +948,8 @@ let drag=null;
 svg.addEventListener('pointerdown',e=>{
   const cardEl=e.target.closest?.('.card');
   const tagBtnEl=e.target.closest?.('.tag-btn');
-  if(EDIT&&cardEl&&!tagBtnEl){
+  const delBtnEl=e.target.closest?.('.del-node-btn');
+  if(EDIT&&cardEl&&!tagBtnEl&&!delBtnEl){
     const gEl=e.target.closest?.('[data-name]');
     const node=gEl?nodeByName(gEl.dataset.name):null;
     if(node&&!node.synthetic&&!realRoots.includes(node)){
@@ -928,6 +1139,86 @@ function downloadCSV(stem){
   a.href=url; a.download=stem+'.csv'; a.click();
   URL.revokeObjectURL(url);
 }
+
+/* ---------- Browse charts ---------- */
+const chartsModal=document.getElementById('charts-modal');
+const chartsListEl=document.getElementById('charts-list');
+
+document.getElementById('browseChartsBtn').addEventListener('click',async()=>{
+  chartsListEl.innerHTML='<div class="charts-loading">Loading…</div>';
+  chartsModal.classList.add('show');
+  try{
+    const resp=await fetch('/dist/');
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const html=await resp.text();
+    const doc=(new DOMParser()).parseFromString(html,'text/html');
+    const links=[...doc.querySelectorAll('a[href]')]
+      .map(a=>a.getAttribute('href'))
+      .filter(h=>h.endsWith('.html')&&!h.startsWith('?')&&!h.startsWith('/'));
+    if(!links.length){
+      chartsListEl.innerHTML='<div class="charts-empty">No charts found in /dist/</div>';
+    } else {
+      chartsListEl.innerHTML='';
+      links.forEach(href=>{
+        const btn=document.createElement('button');
+        btn.className='chart-item';
+        btn.textContent=href.replace(/\.html$/,'');
+        btn.addEventListener('click',()=>{ window.location.href='/dist/'+href; });
+        chartsListEl.appendChild(btn);
+      });
+    }
+  } catch(e){
+    chartsListEl.innerHTML=`<div class="charts-empty">Could not load /dist/: ${esc(e.message)}<br><small>Run the dev server from the project root.</small></div>`;
+  }
+});
+document.getElementById('chartsCloseBtn').addEventListener('click',()=>chartsModal.classList.remove('show'));
+chartsModal.addEventListener('click',e=>{ if(e.target===chartsModal) chartsModal.classList.remove('show'); });
+
+/* ---------- Save as HTML ---------- */
+function currentStemFromURL(){
+  const base=window.location.pathname.split('/').pop();
+  return base.replace(/\.html$/i,'')||'orgchart-edited';
+}
+
+function buildHTML(){
+  const rows=[...byName.values()].map(n=>({
+    name:n.name, cls:n.cls||'', mgr:n.mgr||'', title:n.title||'',
+    tags:n.tags.map(id=>{const t=tagById(id);return t?t.name:null;}).filter(Boolean)
+  }));
+  let html='<!DOCTYPE html>\n'+document.documentElement.outerHTML;
+  const marker='const RAW = ';
+  const start=html.indexOf(marker);
+  if(start<0) throw new Error('Could not locate data marker in page HTML');
+  const semi=html.indexOf(';',start+marker.length);
+  return html.slice(0,start)+marker+JSON.stringify(rows)+html.slice(semi);
+}
+
+const saveHtmlBtn=document.getElementById('saveHtmlBtn');
+let saveHtmlBusy=false;
+saveHtmlBtn.addEventListener('click',async()=>{
+  if(saveHtmlBusy) return;
+  saveHtmlBusy=true;
+  const orig=saveHtmlBtn.textContent;
+  saveHtmlBtn.textContent='Saving…';
+  saveHtmlBtn.disabled=true;
+  try{
+    const content=buildHTML();
+    const filename=currentStemFromURL();
+    const resp=await fetch('/dist/save',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({filename,content})
+    });
+    const json=await resp.json();
+    if(!json.ok) throw new Error(json.error||'Server error');
+    saveHtmlBtn.textContent='✓ Saved to /dist/';
+    setTimeout(()=>{ saveHtmlBtn.textContent=orig; saveHtmlBtn.disabled=false; saveHtmlBusy=false; },2000);
+  }catch(e){
+    saveHtmlBtn.textContent='✗ Error — see console';
+    console.error('Save HTML failed:',e);
+    setTimeout(()=>{ saveHtmlBtn.textContent=orig; saveHtmlBtn.disabled=false; saveHtmlBusy=false; },3000);
+  }
+});
 
 /* ---------- Boot ---------- */
 render();

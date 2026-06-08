@@ -17,15 +17,15 @@
   svg{width:100%;height:100%;display:block;cursor:grab;touch-action:none}
   svg.panning{cursor:grabbing}
   .edge{fill:none;stroke:var(--edge);stroke-width:1.6}
+  .trunk-hl{fill:none;stroke:#3b82f6;stroke-width:2.5;opacity:.85;pointer-events:none}
   .node{transition:transform .42s cubic-bezier(.22,.61,.36,1),opacity .3s ease}
   .node.enter{opacity:0}
   .card{width:100%;height:100%;border-radius:10px;background:var(--card);
     border:1px solid var(--cardbd);border-left:5px solid var(--muted);
     padding:7px 10px;display:flex;flex-direction:column;justify-content:center;
-    cursor:pointer;overflow:hidden;user-select:none;
+    cursor:pointer;overflow:hidden;user-select:none;position:relative;
     box-shadow:0 2px 6px rgba(0,0,0,.35);transition:border-color .15s,box-shadow .15s,background .15s}
   .card:hover{background:#26324d;box-shadow:0 4px 14px rgba(0,0,0,.5)}
-  /* manager nodes (have direct reports) are brighter so they pop vs. ICs */
   .card.is-mgr{background:#33486b;border-color:#566d92;box-shadow:0 3px 12px rgba(0,0,0,.5)}
   .card.is-mgr .nm{color:#ffffff}
   .card.is-mgr .cls{color:#b9c6dd}
@@ -33,6 +33,7 @@
   .card.is-mgr.c-root{background:#1b4f72;border-color:#2e7fb0}
   .card.is-mgr.c-root:hover{background:#226291}
   .card.has-kids:hover{border-color:#7d93ba}
+  .card.drop-target{box-shadow:0 0 0 3px #3b82f6,0 4px 20px rgba(59,130,246,.4)!important;border-color:#3b82f6!important}
   .nm{font-size:13px;font-weight:600;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ttl{font-size:11px;color:#aeb9cf;line-height:1.15;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .meta{display:flex;align-items:center;gap:6px;margin-top:4px}
@@ -70,6 +71,8 @@
     padding:8px 12px;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
   .btn:hover{background:#243049}
   .btn:active{transform:translateY(1px)}
+  .btn.active{background:#2b66c7;color:#fff;border-color:#3b82f6}
+  .btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
   #title{background:var(--panel);border:1px solid #2c3852;border-radius:9px;padding:8px 12px;
     font-size:13px;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3)}
   #title small{color:var(--muted);font-weight:500}
@@ -78,9 +81,109 @@
   #legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:middle}
   #hint{position:fixed;bottom:14px;right:14px;color:var(--muted);font-size:11.5px;
     background:var(--panel);border:1px solid #2c3852;border-radius:9px;padding:8px 12px;z-index:5}
+
+  /* ---------- Edit mode ---------- */
+  #edit-bar{height:3px;background:#f59e0b;position:fixed;top:0;left:0;right:0;z-index:20;display:none}
+  body.editing #edit-bar{display:block}
+  body.editing #stage svg{outline:2px solid rgba(245,158,11,.25);outline-offset:-2px}
+
+  .edit-only{display:none!important}
+  body.editing .edit-only{display:inline-flex!important}
+
+  /* Tag chips on cards (visible always) */
+  .tag-chips{position:absolute;top:3px;right:5px;display:flex;gap:2px;pointer-events:none;z-index:1;max-width:110px;overflow:hidden}
+  .tag-chip{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;color:#fff;white-space:nowrap;line-height:14px;flex:none}
+
+  /* Tag affordance button (edit mode only) */
+  .tag-btn{display:none;position:absolute;bottom:3px;right:5px;width:16px;height:16px;border-radius:50%;
+    background:#2c3958;border:1px solid #3d4d70;cursor:pointer;font-size:10px;line-height:14px;
+    text-align:center;color:var(--muted);padding:0;z-index:2}
+  body.editing .tag-btn{display:block}
+  body.editing .card:hover .tag-btn{background:#3d4d70;color:var(--ink)}
+
+  /* Delete node button (edit mode only) */
+  .del-node-btn{display:none;position:absolute;top:3px;left:5px;width:16px;height:16px;border-radius:50%;
+    background:#2c3958;border:1px solid #3d4d70;cursor:pointer;font-size:13px;line-height:14px;
+    text-align:center;color:var(--muted);padding:0;z-index:2}
+  body.editing .del-node-btn{display:block}
+  body.editing .card:hover .del-node-btn{background:#5a2020;border-color:#8a3a3a;color:#ef4444}
+
+  /* Add/Delete node modals */
+  #node-editor .modal-box{min-width:320px;max-width:380px}
+  #node-editor label{display:block;font-size:11px;color:var(--muted);font-weight:700;
+    text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px}
+  #node-editor input[type=text],#node-editor select{width:100%;background:#0f1420;color:var(--ink);
+    border:1px solid #3d4d70;border-radius:6px;padding:7px 10px;font-size:13px;
+    font-family:inherit;appearance:none}
+  #node-editor input[type=text]:focus,#node-editor select:focus{outline:none;border-color:#3b82f6}
+  #delete-confirm .modal-box{min-width:300px;max-width:340px}
+  #delete-confirm p{font-size:13px;line-height:1.55;color:var(--muted);margin:0 0 4px}
+  #delete-confirm strong{color:var(--ink)}
+
+  /* Dragging cursor in edit mode */
+  body.editing .node{cursor:grab}
+
+  /* Ghost card */
+  #drag-ghost{position:fixed;pointer-events:none;z-index:1000;width:216px;height:70px;display:none;
+    border-radius:10px;background:#253655;border:2px solid #3b82f6;border-left:6px solid #3b82f6;
+    padding:7px 10px;flex-direction:column;justify-content:center;
+    box-shadow:0 12px 36px rgba(0,0,0,.7);overflow:hidden}
+  #drag-ghost .ghost-nm{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #drag-ghost .ghost-ttl{font-size:11px;color:#aeb9cf;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  /* Tag popover */
+  #tag-popover{display:none;position:fixed;z-index:300;background:#1e2d47;border:1px solid #3d4d70;
+    border-radius:10px;padding:10px 12px;min-width:155px;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+  #tag-popover.show{display:block}
+  .pop-title{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+  .pop-item{display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:6px;cursor:pointer;user-select:none}
+  .pop-item:hover{background:#243049}
+  .pop-dot{width:10px;height:10px;border-radius:3px;flex:none}
+  .pop-name{font-size:12px;font-weight:600;flex:1}
+  .pop-check{font-size:12px;color:#3b82f6;margin-left:auto;flex:none}
+  .pop-limit{font-size:10.5px;color:#f59e0b;margin-top:8px;display:none;text-align:center}
+  .pop-limit.show{display:block}
+  .pop-none{font-size:11.5px;color:var(--muted);padding:2px 4px}
+
+  /* Modals */
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.6);
+    align-items:center;justify-content:center}
+  .modal-overlay.show{display:flex}
+  .modal-box{background:#1a2233;border:1px solid #3d4d70;border-radius:12px;padding:22px;
+    min-width:280px;box-shadow:0 16px 48px rgba(0,0,0,.65)}
+  .modal-box h3{margin:0 0 14px;font-size:14px;font-weight:700}
+  .modal-footer{margin-top:14px;display:flex;gap:8px;justify-content:flex-end}
+  .modal-footer button{padding:7px 14px;border-radius:7px;border:none;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+  .modal-footer .btn-secondary{background:#243049;color:var(--ink)}
+  .modal-footer .btn-secondary:hover{background:#2c3958}
+  .modal-footer .btn-primary{background:#2b66c7;color:#fff}
+  .modal-footer .btn-primary:hover{background:#3575e0}
+
+  /* Tag editor */
+  #tag-editor .modal-box{min-width:300px;max-width:360px}
+  .tag-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .tag-swatch{width:18px;height:18px;border-radius:4px;flex:none}
+  .tag-row input[type=text]{flex:1;background:#0f1420;color:var(--ink);border:1px solid #3d4d70;
+    border-radius:6px;padding:5px 8px;font-size:12px;font-family:inherit}
+  .tag-row input[type=text]:focus{outline:none;border-color:#3b82f6}
+  .del-tag{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:0 2px;line-height:1}
+  .del-tag:hover{color:#ef4444}
+  #tag-add-row{margin-top:4px}
+  #tag-add-btn{background:#243049;color:var(--ink);border:1px solid #3d4d70;border-radius:7px;
+    padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer;width:100%;font-family:inherit}
+  #tag-add-btn:hover{background:#2c3958}
+
+  /* Save modal */
+  #save-modal .modal-box{min-width:340px}
+  #save-modal input[type=text]{width:100%;background:#0f1420;color:var(--ink);border:1px solid #3d4d70;
+    border-radius:6px;padding:7px 10px;font-size:13px;font-family:inherit;margin-bottom:10px}
+  #save-modal input[type=text]:focus{outline:none;border-color:#3b82f6}
+  .save-note{font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:4px}
+  .save-note code{background:#0f1420;padding:1px 4px;border-radius:3px;font-size:10.5px}
 </style>
 </head>
 <body>
+<div id="edit-bar"></div>
 <div id="ui">
   <span id="title">Org Chart <small id="sub"></small></span>
   <button class="btn" id="fitAll">Fit entire chart</button>
@@ -97,6 +200,11 @@
     <select id="rootSel"><option value="">Full organization (default)</option></select>
     <button id="rootClear" class="xbtn" title="Reset to full organization">&times;</button>
   </span>
+  <button class="btn" id="editToggle">✏ Edit mode</button>
+  <button class="btn edit-only" id="undoBtn" disabled title="Undo last move (Ctrl+Z)">↩ Undo</button>
+  <button class="btn edit-only" id="addNodeBtn">＋ Add node</button>
+  <button class="btn edit-only" id="tagEditorBtn">⚙ Tags</button>
+  <button class="btn edit-only" id="saveBtn">⬇ Save CSV…</button>
 </div>
 <div id="legend">
   <span><i style="background:var(--root)"></i>Root</span>
@@ -104,70 +212,177 @@
   <span><i style="background:var(--contractor)"></i>Contractor</span>
   <span><i style="background:var(--org)"></i>Org</span>
 </div>
-<div id="hint">Click a node to expand/zoom · scroll to zoom · drag to pan</div>
+<div id="hint">Click node to expand/zoom · scroll to zoom · drag to pan</div>
 <div id="stage">
   <svg id="svg" xmlns="http://www.w3.org/2000/svg">
     <g id="view">
       <g id="edges"></g>
+      <path id="trunk-hl" class="trunk-hl" d=""></path>
       <g id="nodes"></g>
     </g>
   </svg>
+</div>
+
+<!-- Ghost card shown while dragging -->
+<div id="drag-ghost">
+  <div class="ghost-nm" id="ghost-nm"></div>
+  <div class="ghost-ttl" id="ghost-ttl"></div>
+</div>
+
+<!-- Tag popover -->
+<div id="tag-popover">
+  <div class="pop-title">Tags (max 2)</div>
+  <div id="pop-items"></div>
+  <div class="pop-limit" id="pop-limit">Max 2 tags — remove one first</div>
+</div>
+
+<!-- Add node modal -->
+<div id="node-editor" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Add node</h3>
+    <label for="ne-name">Name <span style="color:#ef4444">*</span></label>
+    <input type="text" id="ne-name" placeholder="Full name" autocomplete="off">
+    <label for="ne-title">Title</label>
+    <input type="text" id="ne-title" placeholder="Job title (optional)" autocomplete="off">
+    <label for="ne-cls">Class</label>
+    <select id="ne-cls">
+      <option value="FTE">FTE</option>
+      <option value="Contractor">Contractor</option>
+      <option value="Org">Org</option>
+    </select>
+    <label for="ne-mgr">Manager</label>
+    <select id="ne-mgr"><option value="">(none — top-level)</option></select>
+    <div id="ne-err" style="color:#ef4444;font-size:12px;margin-top:8px;display:none"></div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="neCancel">Cancel</button>
+      <button class="btn-primary" id="neConfirm">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete node confirm modal -->
+<div id="delete-confirm" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Delete node</h3>
+    <p id="del-msg"></p>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="delCancel">Cancel</button>
+      <button class="btn-primary" style="background:#b91c1c" id="delConfirm">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tag palette editor -->
+<div id="tag-editor" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Edit Tag Palette</h3>
+    <div id="tag-rows"></div>
+    <div id="tag-add-row"><button id="tag-add-btn">+ Add tag</button></div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="tagDoneBtn">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Save CSV modal -->
+<div id="save-modal" class="modal-overlay">
+  <div class="modal-box">
+    <h3>Save as CSV</h3>
+    <input type="text" id="save-name" value="orgchart-edited" placeholder="filename (without .csv)">
+    <div class="save-note">
+      Downloads a CSV you can rebuild with:<br>
+      <code>./build.sh data/&lt;file&gt;.csv &lt;name&gt;</code><br>
+      Tag colors are assigned by palette order on load and are not stored in the CSV.
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="saveCancelBtn">Cancel</button>
+      <button class="btn-primary" id="saveConfirmBtn">Download</button>
+    </div>
+  </div>
 </div>
 
 <script>
 /* ---------- DATA (injected by build.py from orgchart.csv) ---------- */
 const RAW = [{"name": "AravindKumar Thalakokkula", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Yashwanth Dhulipudi", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Anirudh Ameraneni", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Saurabh Sharma", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Navin Niraj", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "VinayKrishna Medishetty", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Kowsil Polavarapu", "cls": "Contractor", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Thomas Morgan", "cls": "Contractor", "mgr": "Noah Locke", "title": "Title"}, {"name": "Aindrila Ghorai", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Cheni Deendayal", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Sushree Chhotaray", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Geoffrey Yates", "cls": "Contractor", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "SEKHAR VAANA", "cls": "Contractor", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "Veeraiah Jasti", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Raj Rajput", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Saikiran Salla", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Nehanth Yarlagadda", "cls": "Contractor", "mgr": "James Stiner", "title": "Title"}, {"name": "Bharatnag Patapanchala", "cls": "Contractor", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Indranil Dasgupta", "cls": "Contractor", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Keshav Garg", "cls": "Contractor", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Richa Rathore", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Anusha Gudumasu", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Pijush Kar", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "VenkataRajaVamsiSankar Veguru", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Giribabu Geda", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "VeeraVenkataSivaprasad Ponnaganti", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Nishant Saxena", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Pruthvi Nannapaneni", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "SOUNDARRAJAN PONPANDI", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Hardik Kalathiya", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Satyanarayana Pusuluri", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Raju Manthri", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "JanaNagaBhulokaDeekshitha Maddala", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "SurendraVarma Pericherla", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Rajiv Yella", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "VenkataRamana Cheedara", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Suresh Babu Kunku", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Daisy Vibas", "cls": "Contractor", "mgr": "Gina Fang", "title": "Title"}, {"name": "Stephen Risso", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Dharma Thej Karri", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Satyendra Kumar", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Bill O'Rourke", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Pushkar Bapat", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Atul Mangrolia", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Benjamin Hammond", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Peter Coughlin", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "SivaMadhuBabu Chalasani", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Tyson Burke", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "SyedInamul Hassan", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "RajatRajan Kulkarni", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Melinda Checkon", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Veerendra Potla", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Balaji Palakurthy", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Myle Sielaff", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Suchitra Kondaka", "cls": "Contractor", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Kamala Buddhi", "cls": "Contractor", "mgr": "John Dossou", "title": "Title"}, {"name": "Sudhakar Reddy Alla", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Keith Lutz", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Michael Adkins", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Arian Amador", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Lina Kebede", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Narendar Mudireddy", "cls": "Contractor", "mgr": "Francis Smith", "title": "Title"}, {"name": "Ibrahim Adigozalzade", "cls": "FTE", "mgr": "Ron Hardin", "title": "Title"}, {"name": "Jeneane Hubbell", "cls": "FTE", "mgr": "Rafael Santander", "title": "Title"}, {"name": "Gina Fang", "cls": "FTE", "mgr": "Rafael Santander", "title": "Title"}, {"name": "Carolina Gerren", "cls": "FTE", "mgr": "Rafael Santander", "title": "Title"}, {"name": "Simon Nejadkashani", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Alison McLane", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Rafael Santander", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Lilly Dang", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Deviprasad Thirumalai Chandrasekar", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Hugh Fetner", "cls": "FTE", "mgr": "Noah Locke", "title": "Title"}, {"name": "Azalea Michael", "cls": "FTE", "mgr": "Mandy Benny", "title": "Title"}, {"name": "Romeo Fresnedi", "cls": "FTE", "mgr": "Mandy Benny", "title": "Title"}, {"name": "Stephanie Campbell", "cls": "FTE", "mgr": "Mandy Benny", "title": "Title"}, {"name": "John Dossou", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Krishna Peddi", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Emmanuel Eleruja", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Edward Lyk", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Eric Jarke", "cls": "FTE", "mgr": "Lilly Dang", "title": "Title"}, {"name": "Abhishek Gubba", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Francisco Saligumba", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Vamshi Kulkarni", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Rajeshwar Jinnaram", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Rajavardhan Madireddy", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Harinath Mekala", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Hima Proddatori", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Spoorthi Reddy Bachi Reddy", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Chinmai Nagineni", "cls": "FTE", "mgr": "John Dossou", "title": "Title"}, {"name": "Ron Hardin", "cls": "FTE", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "James Stiner", "cls": "FTE", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "Marjorie Davis", "cls": "FTE", "mgr": "Jeneane Hubbell", "title": "Title"}, {"name": "Mackenzie Roach", "cls": "FTE", "mgr": "James Stiner", "title": "Title"}, {"name": "Scott Van Atta", "cls": "FTE", "mgr": "James Stiner", "title": "Title"}, {"name": "Daniel Lucio", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "John Kelley", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Manjinder Singh", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Francis Smith", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Hemant Dinkar", "cls": "FTE", "mgr": "Hugh Fetner", "title": "Title"}, {"name": "Manojkumar Ravichandran", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Julian Calagos", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Victor Gonzalez Sanchez", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Deepti Batra", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Kevin Lewis", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "George Cockburn", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Kimberly Smeltzer", "cls": "FTE", "mgr": "Hemant Dinkar", "title": "Title"}, {"name": "Benton Snyder", "cls": "FTE", "mgr": "Gina Fang", "title": "Title"}, {"name": "Erick-Jayce De Jesus", "cls": "FTE", "mgr": "Gina Fang", "title": "Title"}, {"name": "Akash Guha", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Amal Rajesh Kocherla", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Sushan Dhakal", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Saravanan Nagappan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Kelvin Chan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Sanat Sahasrabudhe", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Rahul Radhakrishnan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Venkatesh Nagarajan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Rustam Radzhabov", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Claudia Ruiz", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Prithvi Sreenivasan", "cls": "FTE", "mgr": "Francis Smith", "title": "Title"}, {"name": "Yury Brei", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Narendra Sharma Kattel", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Kevin Huang", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Louis Wilson", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Christopher Desgage", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Syed Raheemuddin", "cls": "FTE", "mgr": "Eric Jarke", "title": "Title"}, {"name": "Elton Jue", "cls": "FTE", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Rebecca Candido", "cls": "FTE", "mgr": "Carolina Gerren", "title": "Title"}, {"name": "Yo Nam", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}, {"name": "Neha Amin", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}, {"name": "Cortwright Grant", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}, {"name": "Mandy Benny", "cls": "FTE", "mgr": "Alison McLane", "title": "Title"}];
 
+/* ---------- Tag palette ---------- */
+const TAG_COLORS = ['#f59e0b','#ef4444','#10b981','#a855f7','#3b82f6','#06b6d4','#f97316','#ec4899'];
+let tagSeq = 1;
+let TAGS = [
+  {id:'t1', name:'Review',   color:'#f59e0b'},
+  {id:'t2', name:'Reassign', color:'#ef4444'},
+  {id:'t3', name:'Promote',  color:'#10b981'},
+  {id:'t4', name:'Watch',    color:'#a855f7'},
+];
+tagSeq = 5;
+
+function resolveTagId(name){
+  let t = TAGS.find(t=>t.name===name);
+  if(!t){
+    const id='t'+tagSeq++;
+    t={id, name, color:TAG_COLORS[(tagSeq-2)%TAG_COLORS.length]};
+    TAGS.push(t);
+  }
+  return t.id;
+}
+function tagById(id){ return TAGS.find(t=>t.id===id); }
+
 /* ---------- Build forest ---------- */
 const byName = new Map();
-RAW.forEach(r => byName.set(r.name, {name:r.name, cls:r.cls, mgr:r.mgr, title:r.title||"", children:[]}));
+RAW.forEach(r => byName.set(r.name, {
+  name:r.name, cls:r.cls, mgr:r.mgr, title:r.title||'',
+  tags:(r.tags||[]).slice(0,2).map(resolveTagId),
+  children:[], parent:null
+}));
 const rootMap = new Map();
 const realRoots = [];
-function ensureSynthRoot(name){            // for a manager named in the data but having no row
+function ensureSynthRoot(name){
   if(rootMap.has(name)) return rootMap.get(name);
-  const r={name:name, cls:"root", children:[], synthetic:true};
-  rootMap.set(name, r); realRoots.push(r); return r;
+  const r={name:name,cls:'root',children:[],synthetic:true,tags:[],parent:null};
+  rootMap.set(name,r); realRoots.push(r); return r;
 }
-byName.forEach(n => {
-  if(n.mgr && byName.has(n.mgr))      byName.get(n.mgr).children.push(n);  // normal child
-  else if(n.mgr)                      ensureSynthRoot(n.mgr).children.push(n); // absent manager
-  else                                realRoots.push(n);                   // blank manager => real root
+byName.forEach(n=>{
+  if(n.mgr && byName.has(n.mgr)){
+    const p=byName.get(n.mgr); p.children.push(n); n.parent=p;
+  } else if(n.mgr){
+    const sr=ensureSynthRoot(n.mgr); sr.children.push(n); n.parent=sr;
+  } else {
+    realRoots.push(n);
+  }
 });
-// order: primary first
 function descCount(n){ let c=0; (function w(x){ x.children.forEach(k=>{ c++; w(k); }); })(n); return c; }
 realRoots.sort((a,b)=> descCount(b)-descCount(a) || a.name.localeCompare(b.name));
-const PRIMARY = realRoots.length ? realRoots[0].name : "";
-// sort children: ICs (no kids) first, managers after; alpha within group
+const PRIMARY = realRoots.length ? realRoots[0].name : '';
 function sortKids(n){
   n.children.sort((a,b)=>{
     const am=a.children.length>0, bm=b.children.length>0;
-    if(am!==bm) return am?1:-1;            // ICs above managers
+    if(am!==bm) return am?1:-1;
     return a.name.localeCompare(b.name);
   });
   n.children.forEach(sortKids);
 }
 realRoots.forEach(sortKids);
 
-/* ---------- Re-root (view a single manager's subtree) ---------- */
+/* ---------- Re-root ---------- */
 let rootOverride=null;
-function nodeByName(nm){ return byName.get(nm) || realRoots.find(r=>r.name===nm) || null; }
-function activeRoots(){ const n = rootOverride && nodeByName(rootOverride); return n ? [n] : realRoots; }
+function nodeByName(nm){ return byName.get(nm)||realRoots.find(r=>r.name===nm)||null; }
+function activeRoots(){ const n=rootOverride&&nodeByName(rootOverride); return n?[n]:realRoots; }
 function allManagers(){
   const m=new Map();
   realRoots.forEach(r=>{ if(r.children.length) m.set(r.name,r); });
   byName.forEach(n=>{ if(n.children.length) m.set(n.name,n); });
-  return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name));   // alphabetical by first name
+  return [...m.values()].sort((a,b)=>a.name.localeCompare(b.name));
 }
 
 document.getElementById('sub').textContent =
-  "· " + byName.size + " people" + (PRIMARY ? " · root: " + PRIMARY : "");
+  '· '+byName.size+' people'+(PRIMARY?' · root: '+PRIMARY:'');
 
 /* ---------- Expand state ---------- */
 const expanded = new Set();
-realRoots.forEach(r=>expanded.add(r.name));          // show root rows
+realRoots.forEach(r=>expanded.add(r.name));
 
 /* ---------- Class filter ---------- */
-let FILTER='all';                 // 'all' | 'FTE' | 'Contractor'
+let FILTER='all';
 let KEEP=new Set();
 function passes(n){ if(FILTER==='all') return true; if(n.synthetic) return true; return n.cls===FILTER; }
 function computeKeep(){
@@ -177,76 +392,49 @@ function computeKeep(){
     n.children.forEach(c=>{ if(rec(c)) any=true; });
     if(any) KEEP.add(n.name);
     return any;
-  })({name:'__root__',synthetic:true,cls:'root',children:activeRoots()});
+  })({name:'__root__',synthetic:true,cls:'root',children:activeRoots(),tags:[]});
 }
-function kids(n){ return n.children.filter(c=>KEEP.has(c.name)); }   // filter-aware children
-function hasKids(n){ return kids(n).length>0; }                      // expandable under filter
-function isOpen(n){return expanded.has(n.name);}
-function classCounts(n){ const c={}; n.children.forEach(k=>{const key=k.cls||'?'; c[key]=(c[key]||0)+1;}); return c; }
+function kids(n){ return n.children.filter(c=>KEEP.has(c.name)); }
+function hasKids(n){ return kids(n).length>0; }
+function isOpen(n){ return expanded.has(n.name); }
+function classCounts(n){ const c={}; n.children.forEach(k=>{ const key=k.cls||'?'; c[key]=(c[key]||0)+1; }); return c; }
 
 /* ---------- Layout constants ---------- */
 const CW=216, CH=70, VGAP=16, HGAP=30, DROP=40, ROOTGAP=70;
 
-/* Recursive layout. Sets n.x,n.y (card top-left) and n.bx,n.by,n.bw,n.bh (subtree box).
-   Returns {w,h} of subtree box, placed with top-left at (x,y). */
-function layout(n, x, y){
-  if(!hasKids(n) || !isOpen(n)){
-    n.bx=x; n.by=y; n.bw=CW; n.bh=CH;
-    n.x = x; n.y = y;
-    return {w:CW,h:CH};
+function layout(n,x,y){
+  if(!hasKids(n)||!isOpen(n)){
+    n.bx=x; n.by=y; n.bw=CW; n.bh=CH; n.x=x; n.y=y; return {w:CW,h:CH};
   }
-  const ch   = kids(n);
-  const ics  = ch.filter(c=>!hasKids(c));
-  const mgrs = ch.filter(c=> hasKids(c));
-  const childTop = y + CH + DROP;
-
-  // IC block: single vertical column
+  const ch=kids(n), ics=ch.filter(c=>!hasKids(c)), mgrs=ch.filter(c=>hasKids(c));
+  const childTop=y+CH+DROP;
   let icW=0, icH=0;
-  if(ics.length){ icW=CW; icH=ics.length*CH + (ics.length-1)*VGAP; }
-
-  // Manager block: lay subtrees horizontally (temporarily at 0), measure
+  if(ics.length){ icW=CW; icH=ics.length*CH+(ics.length-1)*VGAP; }
   let mgrW=0, mgrH=0;
   const mgrBoxes=[];
   if(mgrs.length){
     let cx=0;
-    mgrs.forEach((m,i)=>{
-      const b=layout(m, cx, 0);            // provisional x; shift later
-      mgrBoxes.push(b);
-      cx += b.w + (i<mgrs.length-1?HGAP:0);
-      mgrH=Math.max(mgrH,b.h);
-    });
+    mgrs.forEach((m,i)=>{ const b=layout(m,cx,0); mgrBoxes.push(b); cx+=b.w+(i<mgrs.length-1?HGAP:0); mgrH=Math.max(mgrH,b.h); });
     mgrW=cx;
   }
-
-  const childW = Math.max(icW, mgrW, CW);
-  const childLeft = x + (Math.max(CW,childW) - childW)/2;
-  const subW = Math.max(CW, childW);
-
-  // place IC column centered in childW
-  let yy = childTop;
+  const childW=Math.max(icW,mgrW,CW), childLeft=x+(Math.max(CW,childW)-childW)/2, subW=Math.max(CW,childW);
+  let yy=childTop;
   if(ics.length){
-    const icLeft = childLeft + (childW - icW)/2;
-    ics.forEach(c=>{ layout(c, icLeft, yy); yy += CH + VGAP; });
-    yy = childTop + icH + (mgrs.length?VGAP:0);
+    const icLeft=childLeft+(childW-icW)/2;
+    ics.forEach(c=>{ layout(c,icLeft,yy); yy+=CH+VGAP; });
+    yy=childTop+icH+(mgrs.length?VGAP:0);
   }
-  // place manager subtrees centered in childW (shift provisional positions)
   if(mgrs.length){
-    const mgrLeft = childLeft + (childW - mgrW)/2;
-    let cx = mgrLeft;
-    mgrs.forEach((m,i)=>{
-      const b=mgrBoxes[i];
-      shift(m, cx - m.bx, yy - m.by);
-      cx += b.w + HGAP;
-    });
+    const mgrLeft=childLeft+(childW-mgrW)/2;
+    let cx=mgrLeft;
+    mgrs.forEach((m,i)=>{ const b=mgrBoxes[i]; shift(m,cx-m.bx,yy-m.by); cx+=b.w+HGAP; });
   }
-
-  const subH = CH + DROP + (icH + (ics.length&&mgrs.length?VGAP:0) + mgrH);
+  const subH=CH+DROP+(icH+(ics.length&&mgrs.length?VGAP:0)+mgrH);
   n.bx=x; n.by=y; n.bw=subW; n.bh=subH;
-  n.x = x + (subW - CW)/2;            // center card over its subtree
-  n.y = y;
+  n.x=x+(subW-CW)/2; n.y=y;
   return {w:subW,h:subH};
 }
-function shift(n, dx, dy){
+function shift(n,dx,dy){
   n.x+=dx; n.y+=dy; n.bx+=dx; n.by+=dy;
   if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>shift(c,dx,dy));
 }
@@ -258,22 +446,19 @@ function runLayout(){
   WORLD={x:0,y:0,w:Math.max(0,cx-ROOTGAP),h:maxH};
 }
 
-/* ---------- Collect visible nodes & edges ---------- */
+/* ---------- Collect visible nodes ---------- */
 function visible(){
   const out=[];
-  function walk(n,depth){
-    out.push({n,depth});
-    if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>walk(c,depth+1));
-  }
+  function walk(n,depth){ out.push({n,depth}); if(hasKids(n)&&isOpen(n)) kids(n).forEach(c=>walk(c,depth+1)); }
   activeRoots().forEach(r=>walk(r,0));
   return out;
 }
 
-/* ---------- Render (keyed for animation) ---------- */
-const SVGNS="http://www.w3.org/2000/svg";
+/* ---------- Render ---------- */
+const SVGNS='http://www.w3.org/2000/svg';
 const gNodes=document.getElementById('nodes');
 const gEdges=document.getElementById('edges');
-const elMap=new Map();   // name -> {g, fo}
+const elMap=new Map();
 
 function classKey(n){ return n.synthetic?'root':(n.cls||'').replace(/\s+/g,''); }
 
@@ -281,7 +466,7 @@ function metaHTML(n){
   let s=`<span class="cls">${esc(n.synthetic?'Root':n.cls)}</span>`;
   if(n.children.length){
     const c=classCounts(n), order=['FTE','Contractor','Org'];
-    const chipOk=k=>(FILTER==='all'||k===FILTER);   // respect active class filter
+    const chipOk=k=>(FILTER==='all'||k===FILTER);
     let chips='';
     order.forEach(k=>{ if(c[k]&&chipOk(k)) chips+=`<span class="rc rc-${k}" title="${c[k]} ${k}"><i></i>${c[k]}</span>`; });
     Object.keys(c).forEach(k=>{ if(!order.includes(k)&&chipOk(k)) chips+=`<span class="rc" title="${c[k]} ${esc(k)}"><i style="background:var(--muted)"></i>${c[k]}</span>`; });
@@ -291,32 +476,35 @@ function metaHTML(n){
   return s;
 }
 
+function tagChipsHTML(n){
+  return n.tags.map(id=>{
+    const t=tagById(id);
+    return t?`<span class="tag-chip" style="background:${t.color}">${esc(t.name)}</span>`:'';
+  }).join('');
+}
+
 function render(){
   computeKeep();
   runLayout();
   const vis=visible();
   const seen=new Set();
 
-  // edges
-  let dpath="";
+  let dpath='';
   vis.forEach(({n})=>{
     if(hasKids(n)&&isOpen(n)){
       const px=n.x+CW/2, py=n.y+CH;
-      kids(n).forEach(c=>{
-        const cx=c.x+CW/2, cy=c.y, midY=py+DROP*0.55;
-        dpath+=`M${px},${py} V${midY} H${cx} V${cy} `;
-      });
+      kids(n).forEach(c=>{ const cx=c.x+CW/2, cy=c.y, midY=py+DROP*0.55; dpath+=`M${px},${py} V${midY} H${cx} V${cy} `; });
     }
   });
   gEdges.innerHTML=`<path class="edge" d="${dpath}"></path>`;
 
-  // nodes
   vis.forEach(({n})=>{
     seen.add(n.name);
     let rec=elMap.get(n.name);
     if(!rec){
       const g=document.createElementNS(SVGNS,'g');
       g.setAttribute('class','node enter');
+      g.setAttribute('data-name',n.name);
       const fo=document.createElementNS(SVGNS,'foreignObject');
       fo.setAttribute('width',CW); fo.setAttribute('height',CH);
       g.appendChild(fo);
@@ -325,29 +513,42 @@ function render(){
       elMap.set(n.name,rec);
       const card=document.createElement('div');
       card.className='card c-'+classKey(n);
-      card.innerHTML =
+      card.innerHTML=
+        `<div class="tag-chips"></div>`+
         `<div class="nm" title="${esc(n.name)}">${esc(n.name)}</div>`+
-        (n.title?`<div class="ttl" title="${esc(n.title)}">${esc(n.title)}</div>`:``)+
-        `<div class="meta"></div>`;
-      card.addEventListener('click',ev=>{ ev.stopPropagation(); onNodeClick(n); });
+        (n.title?`<div class="ttl" title="${esc(n.title)}">${esc(n.title)}</div>`:'')+
+        `<div class="meta"></div>`+
+        `<button class="tag-btn" title="Edit tags">▾</button>`+
+        `<button class="del-node-btn" title="Delete node">×</button>`;
+      card.addEventListener('click',ev=>{
+        ev.stopPropagation();
+        if(!EDIT) onNodeClick(n);
+        // In edit mode, expand/collapse is handled in svg pointerup
+      });
+      const tagBtn=card.querySelector('.tag-btn');
+      tagBtn.addEventListener('click',ev=>{ ev.stopPropagation(); if(EDIT) openTagPopover(n,tagBtn); });
+      const delBtn=card.querySelector('.del-node-btn');
+      delBtn.addEventListener('click',ev=>{ ev.stopPropagation(); if(EDIT) confirmDeleteNode(n); });
       fo.appendChild(card);
-      rec.card=card; rec.meta=card.querySelector('.meta');
+      rec.card=card;
+      rec.meta=card.querySelector('.meta');
+      rec.tagChips=card.querySelector('.tag-chips');
       requestAnimationFrame(()=>g.classList.remove('enter'));
     }
     rec.g.setAttribute('transform',`translate(${n.x},${n.y})`);
-    rec.meta.innerHTML=metaHTML(n);                          // refresh counts/caret per filter
-    rec.card.classList.toggle('has-kids', hasKids(n));
-    rec.card.classList.toggle('is-mgr', n.children.length>0);
-    rec.card.classList.toggle('open', isOpen(n)&&hasKids(n));
+    rec.meta.innerHTML=metaHTML(n);
+    rec.tagChips.innerHTML=tagChipsHTML(n);
+    rec.card.classList.toggle('has-kids',hasKids(n));
+    rec.card.classList.toggle('is-mgr',n.children.length>0);
+    rec.card.classList.toggle('open',isOpen(n)&&hasKids(n));
   });
 
-  // remove gone
-  elMap.forEach((rec,name)=>{
-    if(!seen.has(name)){ rec.g.remove(); elMap.delete(name); }
-  });
+  elMap.forEach((rec,name)=>{ if(!seen.has(name)){ rec.g.remove(); elMap.delete(name); } });
+
+  syncTrunkHl();
 }
-function countAll(n){let c=0;(function w(x){x.children.forEach(k=>{c++;w(k);});})(n);return c;}
-function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+
+function esc(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 
 /* ---------- Camera ---------- */
 const svg=document.getElementById('svg');
@@ -355,16 +556,16 @@ const view=document.getElementById('view');
 let cam={k:1,tx:0,ty:0};
 const MINK=0.04, MAXK=2.4;
 function apply(){ view.setAttribute('transform',`translate(${cam.tx},${cam.ty}) scale(${cam.k})`); }
-function vw(){return svg.clientWidth;} function vh(){return svg.clientHeight;}
+function vw(){ return svg.clientWidth; } function vh(){ return svg.clientHeight; }
 
 function fitBox(b,pad=60,animate=true){
   if(!b||b.w<=0||b.h<=0) return;
-  const k=Math.max(MINK,Math.min(MAXK, Math.min((vw()-2*pad)/b.w,(vh()-2*pad)/b.h)));
-  const tx=vw()/2 - k*(b.x+b.w/2);
-  const ty=vh()/2 - k*(b.y+b.h/2);
+  const k=Math.max(MINK,Math.min(MAXK,Math.min((vw()-2*pad)/b.w,(vh()-2*pad)/b.h)));
+  const tx=vw()/2-k*(b.x+b.w/2);
+  const ty=vh()/2-k*(b.y+b.h/2);
   animate?animateTo({k,tx,ty}):set({k,tx,ty});
 }
-function set(t){cam=t;apply();}
+function set(t){ cam=t; apply(); }
 let raf=null;
 function animateTo(t,dur=460){
   cancelAnimationFrame(raf);
@@ -378,24 +579,322 @@ function animateTo(t,dur=460){
   })(t0);
 }
 
-/* ---------- Interactions ---------- */
+/* ---------- Edit mode ---------- */
+let EDIT=false;
+const undoStack=[];
+
+function setEditMode(on){
+  EDIT=on;
+  document.getElementById('editToggle').classList.toggle('active',on);
+  document.body.classList.toggle('editing',on);
+  document.getElementById('hint').textContent = on
+    ? 'Drag a node to reparent · click to expand · Ctrl+Z to undo'
+    : 'Click node to expand/zoom · scroll to zoom · drag to pan';
+  if(on){
+    FILTER='all';
+    document.querySelectorAll('#filter button').forEach(b=>b.classList.toggle('on',b.dataset.f==='all'));
+    applyRoot('');
+  }
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>fitBox(WORLD,80));
+}
+document.getElementById('editToggle').addEventListener('click',()=>setEditMode(!EDIT));
+
+function updateUndoBtn(){
+  document.getElementById('undoBtn').disabled=undoStack.length===0;
+}
+
+/* ---------- Cycle prevention ---------- */
+function subtreeNames(n){
+  const s=new Set();
+  (function w(x){ s.add(x.name); x.children.forEach(w); })(n);
+  return s;
+}
+
+/* ---------- Reparent + undo ---------- */
+function reparent(node, newParent){
+  const oldParent=node.parent;
+  undoStack.push({node, oldParent, newParent, oldMgr:node.mgr});
+  if(oldParent) oldParent.children=oldParent.children.filter(c=>c!==node);
+  node.mgr=newParent.name;
+  node.parent=newParent;
+  newParent.children.push(node);
+  sortKids(newParent);
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>{
+    const b=newParent.bw&&newParent.bh
+      ?{x:newParent.bx,y:newParent.by,w:newParent.bw,h:newParent.bh}
+      :WORLD;
+    fitBox(b,80);
+  });
+}
+
+function undo(){
+  const op=undoStack.pop();
+  if(!op) return;
+  if(op.type==='delete'){
+    // Re-add all deleted nodes to byName
+    op.deleted.forEach(n=>byName.set(n.name,n));
+    // Re-attach root node to its parent or realRoots
+    if(op.parent){
+      op.parent.children.push(op.node);
+      sortKids(op.parent);
+    } else {
+      realRoots.push(op.node);
+      realRoots.sort((a,b)=>descCount(b)-descCount(a)||a.name.localeCompare(b.name));
+    }
+  } else if(op.type==='add'){
+    // Remove the added node
+    byName.delete(op.node.name);
+    if(op.parent){
+      op.parent.children=op.parent.children.filter(c=>c!==op.node);
+    } else {
+      const i=realRoots.indexOf(op.node);
+      if(i>=0) realRoots.splice(i,1);
+    }
+    expanded.delete(op.node.name);
+  } else {
+    // reparent (legacy op)
+    const {node,oldParent,newParent,oldMgr}=op;
+    newParent.children=newParent.children.filter(c=>c!==node);
+    node.mgr=oldMgr;
+    node.parent=oldParent;
+    if(oldParent){ oldParent.children.push(node); sortKids(oldParent); }
+  }
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>fitBox(WORLD,80));
+}
+document.getElementById('undoBtn').addEventListener('click',undo);
+
+/* ---------- Delete node ---------- */
+let pendingDeleteNode=null;
+const deleteConfirmModal=document.getElementById('delete-confirm');
+const delMsg=document.getElementById('del-msg');
+
+function confirmDeleteNode(node){
+  pendingDeleteNode=node;
+  const sub=[];
+  (function w(n){ n.children.forEach(c=>{ sub.push(c); w(c); }); })(node);
+  delMsg.innerHTML=sub.length
+    ? `Delete <strong>${esc(node.name)}</strong> and <strong>${sub.length}</strong> report${sub.length===1?'':'s'} under them? This cannot be undone without ↩ Undo.`
+    : `Delete <strong>${esc(node.name)}</strong>? This can be undone with ↩ Undo.`;
+  deleteConfirmModal.classList.add('show');
+}
+
+function executeDelete(){
+  const node=pendingDeleteNode;
+  if(!node) return;
+  pendingDeleteNode=null;
+  deleteConfirmModal.classList.remove('show');
+
+  const deleted=[];
+  (function collect(n){ deleted.push(n); n.children.forEach(collect); })(node);
+  deleted.forEach(n=>{ byName.delete(n.name); expanded.delete(n.name); });
+
+  const parent=node.parent;
+  if(parent){
+    parent.children=parent.children.filter(c=>c!==node);
+  } else {
+    const i=realRoots.indexOf(node);
+    if(i>=0) realRoots.splice(i,1);
+  }
+  node.parent=null;
+
+  undoStack.push({type:'delete', node, parent, deleted});
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>fitBox(WORLD,80));
+}
+
+document.getElementById('delConfirm').addEventListener('click',executeDelete);
+document.getElementById('delCancel').addEventListener('click',()=>{
+  pendingDeleteNode=null;
+  deleteConfirmModal.classList.remove('show');
+});
+
+/* ---------- Add node ---------- */
+const nodeEditorModal=document.getElementById('node-editor');
+const neName=document.getElementById('ne-name');
+const neTitle=document.getElementById('ne-title');
+const neCls=document.getElementById('ne-cls');
+const neMgr=document.getElementById('ne-mgr');
+const neErr=document.getElementById('ne-err');
+
+function openAddNodeModal(){
+  // Populate manager dropdown with all current nodes
+  neMgr.innerHTML='<option value="">(none — top-level)</option>';
+  const allNodes=[...byName.values(),...realRoots.filter(r=>r.synthetic)];
+  allNodes.sort((a,b)=>a.name.localeCompare(b.name));
+  allNodes.forEach(n=>{
+    const o=document.createElement('option');
+    o.value=n.name; o.textContent=n.name+(n.title?' — '+n.title:'');
+    neMgr.appendChild(o);
+  });
+  neName.value=''; neTitle.value=''; neCls.value='FTE'; neMgr.value='';
+  neErr.style.display='none';
+  nodeEditorModal.classList.add('show');
+  requestAnimationFrame(()=>neName.focus());
+}
+
+function executeAdd(){
+  const name=neName.value.trim();
+  if(!name){ neErr.textContent='Name is required.'; neErr.style.display='block'; return; }
+  if(byName.has(name)||realRoots.find(r=>r.name===name)){
+    neErr.textContent='A node with that name already exists.'; neErr.style.display='block'; return;
+  }
+  neErr.style.display='none';
+  nodeEditorModal.classList.remove('show');
+
+  const cls=neCls.value;
+  const title=neTitle.value.trim();
+  const mgrName=neMgr.value;
+  const parent=mgrName?nodeByName(mgrName):null;
+
+  const node={name, cls, mgr:parent?parent.name:'', title, tags:[], children:[], parent:null};
+  byName.set(name, node);
+
+  if(parent){
+    node.parent=parent;
+    parent.children.push(node);
+    sortKids(parent);
+    expanded.add(parent.name);
+  } else {
+    realRoots.push(node);
+    realRoots.sort((a,b)=>descCount(b)-descCount(a)||a.name.localeCompare(b.name));
+  }
+
+  undoStack.push({type:'add', node, parent});
+  updateUndoBtn();
+  render();
+  requestAnimationFrame(()=>{
+    const target=parent||node;
+    fitBox({x:target.x,y:target.y,w:CW,h:CH},80);
+  });
+}
+
+document.getElementById('addNodeBtn').addEventListener('click',openAddNodeModal);
+document.getElementById('neConfirm').addEventListener('click',executeAdd);
+document.getElementById('neCancel').addEventListener('click',()=>nodeEditorModal.classList.remove('show'));
+neName.addEventListener('keydown',e=>{ if(e.key==='Enter') executeAdd(); if(e.key==='Escape') nodeEditorModal.classList.remove('show'); });
+document.addEventListener('keydown',e=>{
+  if(EDIT&&(e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.shiftKey){ e.preventDefault(); undo(); }
+});
+
+/* ---------- Trunk highlight ---------- */
+const trunkHl=document.getElementById('trunk-hl');
+function syncTrunkHl(){
+  if(currentDropTarget&&editDragState&&editDragState.lifted){
+    const n=currentDropTarget;
+    const px=n.x+CW/2, py=n.y+CH, midY=py+DROP*0.5;
+    trunkHl.setAttribute('d',`M${px},${py} V${midY}`);
+  } else {
+    trunkHl.setAttribute('d','');
+  }
+}
+
+/* ---------- Drag to reparent ---------- */
+let editDragState=null;
+let currentDropTarget=null;
+const ghostEl=document.getElementById('drag-ghost');
+const ghostNm=document.getElementById('ghost-nm');
+const ghostTtl=document.getElementById('ghost-ttl');
+
+function clearDrop(){
+  if(currentDropTarget){
+    const rec=elMap.get(currentDropTarget.name);
+    if(rec) rec.card.classList.remove('drop-target');
+    currentDropTarget=null;
+  }
+  trunkHl.setAttribute('d','');
+}
+
+function setDropTarget(node){
+  clearDrop();
+  if(!node) return;
+  currentDropTarget=node;
+  const rec=elMap.get(node.name);
+  if(rec) rec.card.classList.add('drop-target');
+  syncTrunkHl();
+}
+
+function handleEditDragMove(e){
+  if(!editDragState) return;
+  const dx=e.clientX-editDragState.startX, dy=e.clientY-editDragState.startY;
+  if(!editDragState.lifted&&Math.sqrt(dx*dx+dy*dy)>4){
+    editDragState.lifted=true;
+    editDragState.subtree=subtreeNames(editDragState.node);
+    const n=editDragState.node;
+    ghostNm.textContent=n.name;
+    ghostTtl.textContent=n.title||n.cls||'';
+    ghostEl.style.display='flex';
+    const rec=elMap.get(n.name);
+    if(rec) rec.g.style.opacity='0.3';
+  }
+  if(!editDragState.lifted) return;
+  ghostEl.style.left=(e.clientX-CW/2)+'px';
+  ghostEl.style.top=(e.clientY-CH/2)+'px';
+  // Hit test — temporarily hide ghost so elementFromPoint sees through it
+  ghostEl.style.visibility='hidden';
+  const hit=document.elementFromPoint(e.clientX,e.clientY);
+  ghostEl.style.visibility='';
+  const hitName=hit?.closest?.('[data-name]')?.dataset?.name;
+  const hitNode=hitName?nodeByName(hitName):null;
+  const valid=hitNode&&hitNode!==editDragState.node&&!editDragState.subtree.has(hitNode.name);
+  setDropTarget(valid?hitNode:null);
+}
+
+function handleEditDragEnd(e){
+  if(!editDragState) return;
+  const ds=editDragState;
+  editDragState=null;
+  ghostEl.style.display='none';
+  const rec=elMap.get(ds.node.name);
+  if(rec) rec.g.style.opacity='';
+  if(!ds.lifted){
+    // Was a click, not a drag
+    clearDrop();
+    onNodeClick(ds.node);
+    return;
+  }
+  const target=currentDropTarget;
+  clearDrop();
+  if(target&&target!==ds.node&&!ds.subtree.has(target.name)){
+    reparent(ds.node,target);
+  } else {
+    render(); // revert visual
+  }
+}
+
+function cancelEditDrag(){
+  if(!editDragState) return;
+  const ds=editDragState;
+  editDragState=null;
+  ghostEl.style.display='none';
+  const rec=elMap.get(ds.node.name);
+  if(rec) rec.g.style.opacity='';
+  clearDrop();
+  render();
+}
+
+/* ---------- Standard interactions ---------- */
 function onNodeClick(n){
   if(hasKids(n)){
     if(isOpen(n)) collapseRec(n); else expanded.add(n.name);
   }
   render();
-  // after layout, zoom to the clicked node's subtree (or the node if leaf/collapsed)
   requestAnimationFrame(()=>{
-    const b = (hasKids(n)&&isOpen(n)) ? {x:n.bx,y:n.by,w:n.bw,h:n.bh}
-                                      : {x:n.x,y:n.y,w:CW,h:CH};
-    fitBox(b, 70);
+    const b=(hasKids(n)&&isOpen(n))?{x:n.bx,y:n.by,w:n.bw,h:n.bh}:{x:n.x,y:n.y,w:CW,h:CH};
+    fitBox(b,70);
   });
 }
 function collapseRec(n){ expanded.delete(n.name); n.children.forEach(collapseRec); }
 
 document.getElementById('fitAll').onclick=()=>fitBox(WORLD,80);
 document.getElementById('expandAll').onclick=()=>{
-  byName.forEach(n=>{if(n.children.length)expanded.add(n.name);});
+  byName.forEach(n=>{ if(n.children.length) expanded.add(n.name); });
   activeRoots().forEach(r=>expanded.add(r.name));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 };
@@ -404,33 +903,62 @@ document.getElementById('collapseAll').onclick=()=>{
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 };
 document.getElementById('filter').addEventListener('click',e=>{
-  const b=e.target.closest('button'); if(!b)return;
+  const b=e.target.closest('button'); if(!b||EDIT) return;
   FILTER=b.dataset.f;
   e.currentTarget.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
   render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 });
 
-// Root selector: pick any manager to view only their subtree; clear to revert.
 const rootSel=document.getElementById('rootSel');
 const rootClear=document.getElementById('rootClear');
 allManagers().forEach(m=>{
   const o=document.createElement('option');
-  o.value=m.name;
-  o.textContent=m.name+' ('+m.children.length+')';
+  o.value=m.name; o.textContent=m.name+' ('+m.children.length+')';
   rootSel.appendChild(o);
 });
 function applyRoot(name){
-  rootOverride = name || null;
-  rootSel.value = name || '';
-  rootClear.style.display = name ? 'inline-flex' : 'none';
-  if(name && nodeByName(name)) expanded.add(name);   // reveal the new root's reports
-  render();
-  requestAnimationFrame(()=>fitBox(WORLD,80));
+  if(EDIT) return; // lock out re-root in edit mode
+  rootOverride=name||null;
+  rootSel.value=name||'';
+  rootClear.style.display=name?'inline-flex':'none';
+  if(name&&nodeByName(name)) expanded.add(name);
+  render(); requestAnimationFrame(()=>fitBox(WORLD,80));
 }
 rootSel.addEventListener('change',()=>applyRoot(rootSel.value));
 rootClear.addEventListener('click',()=>applyRoot(''));
 
-// wheel zoom around pointer
+/* ---------- Pointer handlers ---------- */
+let drag=null;
+svg.addEventListener('pointerdown',e=>{
+  const cardEl=e.target.closest?.('.card');
+  const tagBtnEl=e.target.closest?.('.tag-btn');
+  if(EDIT&&cardEl&&!tagBtnEl){
+    const gEl=e.target.closest?.('[data-name]');
+    const node=gEl?nodeByName(gEl.dataset.name):null;
+    if(node&&!node.synthetic&&!realRoots.includes(node)){
+      editDragState={node,startX:e.clientX,startY:e.clientY,pointerId:e.pointerId,lifted:false,subtree:null};
+      try{svg.setPointerCapture(e.pointerId);}catch(_){}
+    }
+    return;
+  }
+  if(cardEl) return;
+  drag={x:e.clientX,y:e.clientY,tx:cam.tx,ty:cam.ty,id:e.pointerId,moved:false};
+  svg.classList.add('panning');
+});
+svg.addEventListener('pointermove',e=>{
+  if(editDragState){ handleEditDragMove(e); return; }
+  if(!drag) return;
+  if(!drag.moved&&Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y)>3){
+    drag.moved=true; try{svg.setPointerCapture(drag.id);}catch(_){}
+  }
+  if(!drag.moved) return;
+  cancelAnimationFrame(raf);
+  set({k:cam.k,tx:drag.tx+(e.clientX-drag.x),ty:drag.ty+(e.clientY-drag.y)});
+});
+function endDrag(){ drag=null; svg.classList.remove('panning'); }
+svg.addEventListener('pointerup',e=>{ if(editDragState){handleEditDragEnd(e);return;} endDrag(); });
+svg.addEventListener('pointercancel',e=>{ if(editDragState){cancelEditDrag();return;} endDrag(); });
+
 svg.addEventListener('wheel',e=>{
   e.preventDefault();
   const r=svg.getBoundingClientRect();
@@ -438,31 +966,162 @@ svg.addEventListener('wheel',e=>{
   const wx=(mx-cam.tx)/cam.k, wy=(my-cam.ty)/cam.k;
   const f=Math.exp(-e.deltaY*0.0015);
   const k=Math.max(MINK,Math.min(MAXK,cam.k*f));
-  set({k, tx:mx-wx*k, ty:my-wy*k});
+  set({k,tx:mx-wx*k,ty:my-wy*k});
 },{passive:false});
 
-// drag to pan
-let drag=null;
-svg.addEventListener('pointerdown',e=>{
-  // don't start a pan when pressing on a card — let the click through
-  if(e.target.closest && e.target.closest('.card')) return;
-  drag={x:e.clientX,y:e.clientY,tx:cam.tx,ty:cam.ty,id:e.pointerId,moved:false};
-  svg.classList.add('panning');
-});
-svg.addEventListener('pointermove',e=>{
-  if(!drag)return;
-  if(!drag.moved && Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y)>3){
-    drag.moved=true; try{svg.setPointerCapture(drag.id);}catch(_){}
-  }
-  if(!drag.moved) return;
-  cancelAnimationFrame(raf);
-  set({k:cam.k, tx:drag.tx+(e.clientX-drag.x), ty:drag.ty+(e.clientY-drag.y)});
-});
-function endDrag(){drag=null;svg.classList.remove('panning');}
-svg.addEventListener('pointerup',endDrag);
-svg.addEventListener('pointercancel',endDrag);
-
 window.addEventListener('resize',()=>fitBox(WORLD,80,false));
+
+/* ---------- Tag popover ---------- */
+let popoverNode=null;
+const tagPopover=document.getElementById('tag-popover');
+const popItems=document.getElementById('pop-items');
+const popLimit=document.getElementById('pop-limit');
+
+function openTagPopover(n,btn){
+  popoverNode=n;
+  const r=btn.getBoundingClientRect();
+  let left=r.left, top=r.bottom+4;
+  // keep on screen
+  if(left+180>window.innerWidth) left=window.innerWidth-184;
+  tagPopover.style.left=left+'px';
+  tagPopover.style.top=top+'px';
+  renderPopItems();
+  tagPopover.classList.add('show');
+}
+
+function renderPopItems(){
+  if(!popoverNode) return;
+  if(!TAGS.length){ popItems.innerHTML='<div class="pop-none">No tags defined</div>'; popLimit.classList.remove('show'); return; }
+  popItems.innerHTML=TAGS.map(t=>{
+    const on=popoverNode.tags.includes(t.id);
+    return `<div class="pop-item" data-tid="${t.id}">
+      <span class="pop-dot" style="background:${t.color}"></span>
+      <span class="pop-name">${esc(t.name)}</span>
+      ${on?'<span class="pop-check">✓</span>':''}
+    </div>`;
+  }).join('');
+  popLimit.classList.toggle('show',popoverNode.tags.length>=2);
+}
+
+popItems.addEventListener('click',e=>{
+  const item=e.target.closest('.pop-item');
+  if(!item||!popoverNode) return;
+  const tid=item.dataset.tid;
+  if(popoverNode.tags.includes(tid)){
+    popoverNode.tags=popoverNode.tags.filter(id=>id!==tid);
+  } else {
+    if(popoverNode.tags.length>=2) return;
+    popoverNode.tags.push(tid);
+  }
+  renderPopItems();
+  render();
+});
+
+document.addEventListener('click',e=>{
+  if(!tagPopover.classList.contains('show')) return;
+  if(!tagPopover.contains(e.target)&&!e.target.closest?.('.tag-btn')){
+    tagPopover.classList.remove('show'); popoverNode=null;
+  }
+});
+
+/* ---------- Tag palette editor ---------- */
+const tagEditor=document.getElementById('tag-editor');
+const tagRows=document.getElementById('tag-rows');
+
+document.getElementById('tagEditorBtn').addEventListener('click',()=>{
+  renderTagEditor();
+  tagEditor.classList.add('show');
+});
+document.getElementById('tagDoneBtn').addEventListener('click',()=>{
+  commitTagEdits();
+  tagEditor.classList.remove('show');
+  render();
+});
+document.getElementById('tag-add-btn').addEventListener('click',()=>{
+  commitTagEdits();
+  const id='t'+tagSeq++;
+  const color=TAG_COLORS[(tagSeq-2)%TAG_COLORS.length];
+  TAGS.push({id,name:'Tag '+(TAGS.length+1),color});
+  renderTagEditor();
+});
+
+function renderTagEditor(){
+  tagRows.innerHTML=TAGS.map((t,i)=>`
+    <div class="tag-row" data-idx="${i}">
+      <span class="tag-swatch" style="background:${t.color}"></span>
+      <input type="text" class="tag-name-input" value="${esc(t.name)}" placeholder="Tag name">
+      <button class="del-tag" data-idx="${i}" title="Remove">&times;</button>
+    </div>
+  `).join('');
+}
+
+tagRows.addEventListener('click',e=>{
+  const btn=e.target.closest('.del-tag');
+  if(!btn) return;
+  commitTagEdits();
+  const idx=parseInt(btn.dataset.idx);
+  const removed=TAGS[idx];
+  TAGS.splice(idx,1);
+  byName.forEach(n=>{ n.tags=n.tags.filter(id=>id!==removed.id); });
+  renderTagEditor();
+});
+
+function commitTagEdits(){
+  tagRows.querySelectorAll('.tag-row').forEach((row,i)=>{
+    const inp=row.querySelector('.tag-name-input');
+    if(inp&&TAGS[i]) TAGS[i].name=inp.value.trim()||TAGS[i].name;
+  });
+}
+
+// Close tag editor on overlay click
+tagEditor.addEventListener('click',e=>{ if(e.target===tagEditor){ commitTagEdits(); tagEditor.classList.remove('show'); render(); } });
+
+/* ---------- Save CSV ---------- */
+document.getElementById('saveBtn').addEventListener('click',()=>{
+  document.getElementById('save-modal').classList.add('show');
+  setTimeout(()=>document.getElementById('save-name').select(),50);
+});
+document.getElementById('saveCancelBtn').addEventListener('click',()=>document.getElementById('save-modal').classList.remove('show'));
+document.getElementById('saveConfirmBtn').addEventListener('click',()=>{
+  const name=document.getElementById('save-name').value.trim()||'orgchart-edited';
+  downloadCSV(name);
+  document.getElementById('save-modal').classList.remove('show');
+});
+document.getElementById('save-name').addEventListener('keydown',e=>{
+  if(e.key==='Enter') document.getElementById('saveConfirmBtn').click();
+  if(e.key==='Escape') document.getElementById('saveCancelBtn').click();
+});
+document.getElementById('save-modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('save-modal')) document.getElementById('saveCancelBtn').click();
+});
+
+function csvQuote(s){
+  s=String(s==null?'':s);
+  if(s.includes(',')|| s.includes('"')||s.includes('\n')) return '"'+s.replace(/"/g,'""')+'"';
+  return s;
+}
+
+function downloadCSV(stem){
+  const lines=['Name,Class,Manager,Job Title,Tags'];
+  const visited=new Set();
+  (function walk(n){
+    if(n.synthetic||visited.has(n.name)) return;
+    visited.add(n.name);
+    const tagNames=n.tags.map(id=>{const t=tagById(id);return t?t.name:'';}).filter(Boolean).join('|');
+    lines.push([csvQuote(n.name),csvQuote(n.cls),csvQuote(n.mgr||''),csvQuote(n.title||''),csvQuote(tagNames)].join(','));
+    n.children.forEach(walk);
+  })({children:realRoots,synthetic:true,name:'__root__'});
+  // safety: any byName nodes not yet visited
+  byName.forEach(n=>{ if(!visited.has(n.name)){
+    const tagNames=n.tags.map(id=>{const t=tagById(id);return t?t.name:'';}).filter(Boolean).join('|');
+    lines.push([csvQuote(n.name),csvQuote(n.cls),csvQuote(n.mgr||''),csvQuote(n.title||''),csvQuote(tagNames)].join(','));
+  }});
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=stem+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
 
 /* ---------- Boot ---------- */
 render();
